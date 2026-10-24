@@ -1,0 +1,2603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<meta name="theme-color" content="#e8c874" />
+<title>3D AR Menu for Every Cuisine · LiveDish-AI</title>
+<meta name="description" content="Immersive 3D AR menus for every type of cuisine — scroll-driven 3D dish previews, AI recommendations and AR table preview. Powered by LiveDish-AI." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://unpkg.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Outfit:wght@500;700;800&family=Inter:wght@300;400;500;600&family=Noto+Sans+Kannada:wght@400;500;600&family=Noto+Sans+Tamil:wght@400;500;600&family=Noto+Sans+Malayalam:wght@400;500;600&family=Noto+Sans+Telugu:wght@400;500;600&display=swap" rel="stylesheet" />
+<!-- Import map (must come before any module script). Used lazily by the Whole-Table AR feature to merge several dishes into one 3D scene. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<!-- Start downloading the 3D models while the page is still parsing (before any JS runs) -->
+<link rel="preload" as="fetch" crossorigin href="3d-model/Fried-Calamari/Fried-Calamari.glb" />
+<link rel="preload" as="fetch" crossorigin href="3d-model/Cheesy-Green-Lasagne/Cheesy-Green-Lasagne.glb" />
+<link rel="preload" as="fetch" crossorigin href="3d-model/Pinocchio-Tiramisu/Pinocchio-Tiramisu.glb" />
+<link rel="preload" as="fetch" crossorigin href="3d-model/Pistachio-Sauce-Bigne-with-Ricotta/Pistachio-Sauce-Bigne-with-Ricotta.glb" />
+<link rel="modulepreload" href="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" />
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--red-950:#4a0508;--red-900:#6c060b;--red-800:#8a0a10;--red-700:#a30d14;--red-600:#c0121a;--red-500:#d9262e;--gold:#d9b25f;--gold-lt:#f6e0a3;--gold-dk:#a97d2c;--gold-grad:linear-gradient(135deg,#f8e5ab 0%,#e0b862 45%,#b88a34 100%);--red-grad:linear-gradient(135deg,#d9262e 0%,#a30d14 55%,#6c060b 100%);--white:#fff;--ink:#2a0c0e;--ink-mid:#5a2a2c;--ink-soft:#8a6461;--green:#2f7a3a;--green-bg:rgba(228,243,227,.9);--wa-green:#1fa855;--wa-grad:linear-gradient(135deg,#25D366 0%,#128C7E 100%);--glass-line:rgba(255,255,255,.66);--glass-blur:blur(22px) saturate(1.6);--radius:24px;--ease:cubic-bezier(.22,1,.36,1);--f-display:'Playfair Display',serif;--f-brand:'Outfit',sans-serif;--f-sans:'Inter','Noto Sans Kannada','Noto Sans Tamil','Noto Sans Malayalam','Noto Sans Telugu',system-ui,sans-serif}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;width:100%;overflow-x:clip}
+body{font-family:var(--f-sans);color:var(--red-900);min-height:100vh;width:100%;-webkit-font-smoothing:antialiased;overflow-x:clip;background:#f2e2b4;padding-bottom:96px}
+model-viewer::part(default-ar-button),model-viewer::part(default-exit-webxr-ar-button){display:none!important;opacity:0!important;pointer-events:none!important}
+.glass{background:linear-gradient(135deg,rgba(255,255,255,.54),rgba(255,255,255,.2));-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:0 18px 50px rgba(108,6,11,.2),inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 0 rgba(255,255,255,.18)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(255,250,240,.94)}}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:300;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--red-600),var(--gold),var(--red-600));box-shadow:0 0 12px rgba(192,18,26,.6)}
+.ld-logo{display:inline-flex;align-items:flex-end;position:relative;font-family:var(--f-brand);font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--white)}
+.ld-logo .leaf{position:absolute;left:-2px;top:-.62em;width:.62em;height:.62em}
+.ld-logo .dash,.ld-logo .ai{background:var(--gold-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero .ld-logo{color:var(--red-900)}
+.hero .ld-logo .dash,.hero .ld-logo .ai{background:linear-gradient(135deg,var(--red-500),var(--red-800));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero .ld-logo .leaf path{fill:url(#redG)}
+.hero{position:relative;z-index:2;text-align:center;padding:max(env(safe-area-inset-top),1rem) 1rem 3.2rem}
+.hero-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;max-width:1080px;margin:0 auto 2rem;position:relative;z-index:3}
+.hero-top-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#lang-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.5) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236c060b' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 14px center;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--red-900);border:1px solid var(--glass-line);border-radius:999px;padding:10px 38px 10px 18px;font:600 12.5px var(--f-sans);cursor:pointer;outline:none;box-shadow:0 8px 24px rgba(108,6,11,.16),inset 0 1px 0 rgba(255,255,255,.85);transition:background-color .2s,border-color .2s}
+#lang-select:hover,#lang-select:focus-visible{background-color:#fff;border-color:var(--red-700)}
+#lang-select option{background:#fff;color:#2a0c0e}
+.table-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--red-900);border:1px solid var(--glass-line);border-radius:999px;padding:9px 15px;font:700 12px var(--f-sans);cursor:pointer;box-shadow:0 8px 24px rgba(108,6,11,.14),inset 0 1px 0 rgba(255,255,255,.85);transition:all .2s var(--ease)}
+.table-pill:hover{background:#fff;border-color:var(--red-700);transform:translateY(-1px)}
+.table-pill .dot-live{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(47,122,58,.2)}
+.funzone-btn{display:inline-flex;align-items:center;gap:7px;text-decoration:none;background:var(--red-grad);color:#fff;border:1px solid rgba(255,255,255,.4);padding:10px 19px;border-radius:999px;font:700 12.5px var(--f-sans);letter-spacing:.02em;box-shadow:0 10px 26px rgba(108,6,11,.38),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .25s var(--ease),box-shadow .25s}
+.funzone-btn:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 34px rgba(108,6,11,.5),inset 0 1px 0 rgba(255,255,255,.35)}
+.hero-panel{position:relative;z-index:2;max-width:780px;margin:0 auto;padding:2.6rem 1.5rem 2.1rem;border-radius:40px;overflow:hidden;transform-origin:50% 100%;transform:perspective(1200px) rotateX(calc(var(--hp,0)*18deg + var(--my,0)*-3deg)) rotateY(calc(var(--mx,0)*4deg)) translate3d(0,calc(var(--hp,0)*-50px),calc(var(--hp,0)*-140px));opacity:calc(1 - var(--hp,0)*.85);transition:transform .2s linear;will-change:transform,opacity}
+.hero-panel::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.6) 48%,transparent 62%);transform:translateX(-130%);animation:sheen 7s ease-in-out infinite}
+@keyframes sheen{0%,55%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
+.hero-panel>*{position:relative}
+.eyebrow{font:600 11px var(--f-sans);letter-spacing:.5em;text-transform:uppercase;color:var(--red-700);margin-bottom:14px;padding-left:.5em}
+.brand{font-family:var(--f-display);font-weight:700;color:var(--red-800);font-size:clamp(40px,10vw,84px);letter-spacing:.08em;line-height:1;padding-left:.1em;text-shadow:0 2px 0 rgba(255,255,255,.7),0 14px 34px rgba(108,6,11,.28);transform:translate(calc(var(--mx,0)*-8px),calc(var(--my,0)*-6px))}
+.chef{font:italic 400 clamp(17px,3.4vw,22px) var(--f-display);color:var(--red-900);margin-top:12px}
+.ornament{display:flex;align-items:center;justify-content:center;gap:12px;margin:22px auto 16px;max-width:300px}
+.ornament::before,.ornament::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--red-700))}
+.ornament::after{transform:scaleX(-1)}
+.ornament i{width:8px;height:8px;background:var(--red-grad);transform:rotate(45deg);display:block}
+.tagline{font:500 13px var(--f-sans);letter-spacing:.24em;text-transform:uppercase;color:rgba(108,6,11,.85);margin-bottom:26px}
+.steps{max-width:540px;margin:0 auto 18px;display:grid;grid-template-columns:repeat(3,1fr);background:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.7);border-radius:22px;box-shadow:0 12px 30px rgba(108,6,11,.16),inset 0 1px 0 rgba(255,255,255,.9)}
+.step{padding:16px 8px 14px;position:relative}
+.step+.step::before{content:'';position:absolute;left:0;top:18%;bottom:18%;width:1px;background:rgba(163,13,20,.28)}
+.step-ico{width:44px;height:44px;margin:0 auto 9px;border-radius:50%;display:grid;place-items:center;background:var(--red-grad);box-shadow:0 8px 18px rgba(108,6,11,.38),inset 0 1px 0 rgba(255,255,255,.35)}
+.step-ico svg{width:21px;height:21px;stroke:var(--gold-lt);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.step-n{font:700 9.5px var(--f-sans);letter-spacing:.25em;color:var(--red-700);margin-bottom:3px}
+.step-t{font:700 13px var(--f-sans);color:var(--red-900);letter-spacing:.02em}
+.hero-pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px;margin:0 auto 22px}
+.hero-pills i{font:600 11.5px var(--f-sans);font-style:normal;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.85);color:var(--red-800);box-shadow:0 6px 16px rgba(108,6,11,.12)}
+.hero-pills b{color:var(--gold-dk);font-weight:800;margin-right:3px}
+.ar-banner{display:flex;align-items:center;justify-content:center;gap:16px;max-width:520px;margin:0 auto;font:600 clamp(11px,2.6vw,14px) var(--f-brand);letter-spacing:.38em;text-transform:uppercase;color:var(--red-900)}
+.ar-banner::before,.ar-banner::after{content:'';flex:1;height:1.5px;background:linear-gradient(90deg,var(--red-800),var(--red-500))}
+.ar-banner span{white-space:nowrap;padding-left:.38em}
+.powered,.scroll-cue{opacity:calc(1 - var(--hp,0)*1.6)}
+.powered{position:relative;z-index:2;margin-top:24px;display:inline-flex;align-items:center;gap:10px;font:500 11px var(--f-sans);letter-spacing:.14em;text-transform:uppercase;color:rgba(108,6,11,.78)}
+.powered .ld-logo{font-size:26px;text-transform:none;letter-spacing:-.02em;margin-left:4px}
+.hero-panel .powered{display:flex;justify-content:center;margin-top:26px;padding-top:18px;border-top:1px solid rgba(163,13,20,.2);opacity:1;font-size:12px}
+.cuisine-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:600px;margin:0 auto 26px}
+.cuisine-chips span{font:600 12px var(--f-sans);letter-spacing:.06em;padding:7px 15px;border-radius:99px;background:var(--red-grad);color:var(--gold-lt);box-shadow:0 6px 16px rgba(108,6,11,.22),inset 0 1px 0 rgba(255,255,255,.3)}
+.cuisine-chips span:last-child{background:rgba(255,255,255,.6);color:var(--red-800);box-shadow:none;border:1px dashed rgba(163,13,20,.4)}
+.scroll-cue{display:flex;width:max-content;align-items:center;gap:12px;margin:22px auto 0;padding:9px 20px;border-radius:99px;font:600 11px var(--f-sans);letter-spacing:.2em;text-transform:uppercase;color:var(--red-900);position:relative;z-index:2}
+.scroll-cue .mouse{width:16px;height:26px;border:2px solid var(--red-800);border-radius:10px;position:relative;flex-shrink:0}
+.scroll-cue .mouse i{position:absolute;left:50%;top:4px;width:3px;height:5px;margin-left:-1.5px;border-radius:3px;background:var(--red-700);animation:wheel 1.6s ease-in-out infinite}
+@keyframes wheel{0%{transform:translateY(0);opacity:1}70%{transform:translateY(8px);opacity:0}100%{opacity:0}}
+/* SHOWCASE */
+.showcase{position:relative;z-index:2;height:var(--sh,320vh);margin-top:1.5rem}
+.stage{position:sticky;top:0;height:100vh;height:100svh;max-width:1080px;margin:0 auto;padding:14px 10px;display:grid;grid-template-rows:auto 1fr auto;gap:10px}
+.stage-body{position:relative;min-height:0}
+.halo{position:absolute;left:50%;top:66%;width:min(84vw,540px);aspect-ratio:1;pointer-events:none;transform:translate(-50%,-50%) perspective(900px) rotateX(68deg)}
+.ring{position:absolute;inset:0;border-radius:50%}
+.ring.r1{border:3px solid rgba(169,125,44,.75);box-shadow:0 0 60px rgba(255,255,255,.55) inset,0 0 40px rgba(217,178,95,.5)}
+.ring.r2{inset:13%;border:2px dashed rgba(163,13,20,.7);transform:rotate(calc(var(--rot,0deg)*-1))}
+.ring.r3{inset:27%;border:2px solid rgba(255,255,255,.8);background:radial-gradient(circle,rgba(255,255,255,.55),rgba(217,178,95,.15) 70%);transform:rotate(var(--rot,0deg))}
+.show-stack{position:absolute;inset:0}
+.show-stack model-viewer{position:absolute;inset:0;width:100%;height:100%;background:transparent;pointer-events:none;opacity:0;visibility:hidden;--poster-color:transparent;--progress-bar-color:#a30d14;--progress-mask:transparent;will-change:opacity}
+.zbtn{width:34px;height:34px;flex-shrink:0;border-radius:50%;cursor:pointer;border:1px solid rgba(255,255,255,.85);background:rgba(255,255,255,.65);color:var(--red-800);font:700 19px/1 var(--f-sans);display:grid;place-items:center;transition:transform .2s var(--ease),background .2s;-webkit-tap-highlight-color:transparent}
+.zbtn:hover{background:#fff;transform:scale(1.08)}
+.stage-card{justify-self:center;width:100%;max-width:560px;padding:1.15rem 1.3rem 1.05rem;border-radius:30px;color:var(--ink)}
+.sc-swap.pop{animation:rise .5s var(--ease)}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.sc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.sc-count{font:800 12px var(--f-brand);letter-spacing:.18em;color:var(--red-700)}
+.sc-cat{font:700 10px var(--f-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--red-900);background:var(--gold-grad);padding:3px 11px;border-radius:99px}
+.sc-name{font-family:var(--f-display);font-size:clamp(22px,5.4vw,32px);font-weight:700;color:var(--red-800);line-height:1.2}
+.sc-desc{margin-top:6px;font-size:13px;line-height:1.6;color:var(--ink-mid);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.sc-tech{display:none}
+.tech-row{display:flex;gap:8px;align-items:flex-start;padding:8px 11px;border-radius:14px;background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.8);font-size:12px;line-height:1.45;color:var(--ink-mid)}
+.tech-row b{flex-shrink:0;font:800 10.5px var(--f-brand);letter-spacing:.12em;color:#fff;background:var(--red-grad);padding:3px 8px;border-radius:99px;margin-top:1px}
+.sc-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.sc-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.sc-price{font-family:var(--f-display);font-size:30px;font-weight:700;color:var(--red-700);display:flex;align-items:baseline;gap:2px;line-height:1}
+.dots{display:flex;justify-content:center;gap:7px;margin-top:12px}
+.dot{width:8px;height:8px;border-radius:99px;border:none;background:rgba(108,6,11,.25);cursor:pointer;transition:all .35s var(--ease)}
+.dot.active{width:28px;background:var(--red-grad)}
+.stage>.controls{position:relative;top:auto;z-index:10;width:100%;max-width:640px;margin:0;justify-self:center}
+.stage .controls-inner{padding:9px 11px 8px;gap:8px}
+.stage #search,.stage .veg-toggle{height:40px}
+@media(min-width:900px){.stage{grid-template-columns:1.3fr 1fr;grid-template-rows:auto 1fr;column-gap:26px}.stage>.controls{grid-column:1/-1}.stage-body{grid-column:1;grid-row:2}.stage-card{grid-column:2;grid-row:2;align-self:center;padding:1.6rem 1.7rem 1.4rem}.halo{top:62%}.sc-desc{font-size:14px}}
+/* CONTROLS */
+.controls{position:sticky;top:10px;z-index:100;max-width:1080px;width:calc(100% - 20px);margin:0 auto;border-radius:28px}
+.controls-inner{padding:12px 14px 11px;display:flex;flex-direction:column;gap:10px}
+.search-row{display:flex;gap:10px;align-items:center}
+.search-box{flex:1;position:relative}
+.search-box svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--red-700);fill:none;stroke-width:2.2;stroke-linecap:round;pointer-events:none}
+#search{width:100%;height:46px;background:rgba(255,255,255,.62);color:var(--ink);border:1.5px solid rgba(255,255,255,.8);border-radius:16px;padding:0 14px 0 42px;font:400 14px var(--f-sans);outline:none;transition:border-color .2s,box-shadow .2s,background .2s;box-shadow:inset 0 1px 3px rgba(108,6,11,.08)}
+#search::placeholder{color:var(--ink-soft)}
+#search:focus{background:#fff;border-color:var(--red-600);box-shadow:0 0 0 4px rgba(192,18,26,.16)}
+.veg-toggle{display:inline-flex;align-items:center;gap:9px;height:46px;padding:0 15px;border-radius:16px;background:rgba(255,255,255,.45);border:1px solid rgba(255,255,255,.8);color:var(--red-900);font:600 12.5px var(--f-sans);cursor:pointer;white-space:nowrap;user-select:none;transition:all .25s}
+.veg-toggle .sw{width:30px;height:17px;border-radius:99px;background:rgba(108,6,11,.25);position:relative;transition:background .2s}
+.veg-toggle .sw::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .25s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.veg-toggle[aria-pressed="true"]{background:var(--green-bg);color:var(--green);border:1px solid rgba(47,122,58,.5)}
+.veg-toggle[aria-pressed="true"] .sw{background:var(--green)}
+.veg-toggle[aria-pressed="true"] .sw::after{transform:translateX(13px)}
+.tabs-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.tabs-inner::-webkit-scrollbar{display:none}
+.tab-btn{flex-shrink:0;cursor:pointer;padding:9px 20px;border-radius:999px;background:rgba(255,255,255,.4);color:var(--red-900);border:1px solid rgba(255,255,255,.8);font:600 12.5px var(--f-sans);letter-spacing:.03em;transition:all .3s var(--ease);white-space:nowrap}
+.tab-btn:hover{background:rgba(255,255,255,.75);transform:translateY(-1px)}
+.tab-btn.active{color:var(--gold-lt);border-color:transparent;background:var(--red-grad);box-shadow:0 8px 20px rgba(108,6,11,.4),inset 0 1px 0 rgba(255,255,255,.3)}
+/* MAIN*/
+.main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:1.4rem 1rem 4rem}
+.full-menu-title{font-family:var(--f-display);font-size:clamp(30px,7vw,46px);font-weight:700;text-align:center;color:var(--red-900);margin:.5rem 0 1rem;text-shadow:0 1px 0 rgba(255,255,255,.7)}
+.section-label{display:flex;align-items:center;gap:16px;margin:2.4rem 0 1.4rem;font-family:var(--f-display);font-size:28px;font-weight:700;letter-spacing:.03em;color:var(--red-900);text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.section-label:first-child{margin-top:.8rem}
+.section-label::before{content:'';width:10px;height:10px;background:var(--red-grad);transform:rotate(45deg);flex-shrink:0}
+.section-label::after{content:'';flex:1;height:1.5px;background:linear-gradient(90deg,var(--red-700),transparent)}
+.section-label small{order:2;font:700 11px var(--f-sans);letter-spacing:.12em;color:var(--gold-lt);background:var(--red-grad);border-radius:99px;padding:3px 11px}
+.items-grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:640px){.items-grid{grid-template-columns:repeat(2,1fr);gap:24px}}
+@media(min-width:980px){.items-grid{grid-template-columns:repeat(3,1fr)}}
+.card-cell{display:block;min-width:0}
+.card-cell>.menu-card{height:100%}
+/* CARDS */
+.menu-card{position:relative;overflow:hidden;display:flex;gap:14px;padding:12px;color:var(--ink);cursor:pointer;border-radius:var(--radius);background:linear-gradient(135deg,rgba(255,255,255,.64),rgba(255,255,255,.26));-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);border:1px solid rgba(255,255,255,.75);box-shadow:0 16px 42px rgba(108,6,11,.24),inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(217,178,95,.26);-webkit-tap-highlight-color:transparent;transform:perspective(1100px) rotateX(calc(var(--srx,0deg) + var(--hrx,0deg))) rotateY(var(--hry,0deg)) translate3d(0,var(--sty,0px),0) scale(calc(var(--sc,1)*var(--hs,1)));opacity:var(--so,1);transition:transform .18s linear,opacity .18s linear,box-shadow .3s,border-color .3s;will-change:transform,opacity}
+.menu-card::after{content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(280px circle at var(--gx,50%) var(--gy,0%),rgba(255,255,255,.7),transparent 62%);opacity:0;transition:opacity .25s}
+.menu-card:hover{--hs:1.025;border-color:#fff;box-shadow:0 30px 64px rgba(108,6,11,.36),inset 0 1px 0 #fff,inset 0 0 0 1px rgba(217,178,95,.5)}
+.menu-card:hover::after{opacity:1}
+.menu-card:focus-visible{outline:3px solid var(--red-600);outline-offset:3px}
+.menu-card.unavailable{opacity:calc(var(--so,1)*.5);filter:grayscale(.8);pointer-events:none}
+.card-thumb{position:relative;flex-shrink:0;width:104px;height:104px;border-radius:16px;overflow:hidden;background:radial-gradient(circle at 30% 20%,#fff,#fbf3e4);border:1px solid rgba(255,255,255,.9);box-shadow:0 8px 20px rgba(108,6,11,.18);display:grid;place-items:center;font-size:38px}
+.card-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .7s var(--ease)}
+.menu-card:hover .card-thumb img{transform:scale(1.14)}
+.ar-pill{position:absolute;left:7px;bottom:7px;display:inline-flex;align-items:center;gap:4px;background:var(--red-grad);color:#fff;border:1px solid var(--gold-lt);border-radius:99px;font:700 9px var(--f-sans);letter-spacing:.12em;padding:3px 8px 3px 6px;box-shadow:0 3px 8px rgba(0,0,0,.3)}
+.ar-pill svg{width:10px;height:10px}
+.card-body{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.dish-name{font-family:var(--f-display);font-size:19px;font-weight:700;color:var(--red-800);line-height:1.25}
+.tags-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tags-row:empty{display:none}
+.tag{display:inline-flex;align-items:center;gap:4px;font:700 9.5px var(--f-sans);letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:99px}
+.tag-veg{background:var(--green-bg);color:var(--green);border:1px solid rgba(47,122,58,.3)}
+.tag-new{background:rgba(192,18,26,.12);color:var(--red-700);border:1px solid rgba(192,18,26,.3)}
+.tag-dotd{background:rgba(217,178,95,.3);color:#7a5617;border:1px solid rgba(169,125,44,.5)}
+.dish-desc{font-size:12.5px;line-height:1.6;color:var(--ink-mid);margin-top:8px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tech-line{display:none}
+.tech-chip{font:600 10px var(--f-sans);letter-spacing:.03em;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.6);border:1px solid rgba(163,13,20,.22);color:var(--red-800)}
+.tech-chip b{color:var(--gold-dk);font-weight:800;margin-right:2px}
+.card-footer{margin-top:auto;padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.card-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
+.dish-price{font-family:var(--f-display);font-size:24px;font-weight:700;color:var(--red-700);display:flex;align-items:baseline;gap:2px;line-height:1}
+.price-sym{font:700 13px var(--f-sans);color:var(--gold-dk)}
+.ar-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--gold-grad);color:var(--red-900);border:1px solid rgba(255,250,224,.85);border-radius:999px;padding:9px 14px;min-height:38px;font:700 11px var(--f-sans);letter-spacing:.09em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .25s var(--ease);box-shadow:0 8px 22px rgba(108,6,11,.22),inset 0 1.5px 0 rgba(255,255,255,.78);-webkit-tap-highlight-color:transparent}
+.ar-btn svg{width:15px;height:15px;stroke:var(--red-900);stroke-width:2.2;flex-shrink:0}
+.ar-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 14px 28px rgba(108,6,11,.35),inset 0 1.5px 0 rgba(255,255,255,.9);filter:brightness(1.03)}
+.ar-btn:active:not(:disabled){transform:translateY(0) scale(.98)}
+.ar-btn:disabled{opacity:.88;cursor:progress}
+
+/* ADD TO CART & STEPPER */
+.cart-ctl-wrap{display:inline-flex;align-items:center}
+.add-dish-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;background:var(--red-grad);color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:9px 15px;min-height:38px;font:700 11.5px var(--f-sans);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;box-shadow:0 8px 20px rgba(108,6,11,.28),inset 0 1px 0 rgba(255,255,255,.35);transition:all .22s var(--ease);-webkit-tap-highlight-color:transparent}
+.add-dish-btn:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(108,6,11,.4)}
+.add-dish-btn:active{transform:scale(.96)}
+.qty-stepper{display:inline-flex;align-items:center;background:var(--red-grad);color:#fff;border:1px solid rgba(255,255,255,.55);border-radius:999px;height:38px;padding:2px;box-shadow:0 8px 20px rgba(108,6,11,.32),inset 0 1px 0 rgba(255,255,255,.3)}
+.qty-btn{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.16);color:#fff;font:800 16px/1 var(--f-sans);display:grid;place-items:center;cursor:pointer;transition:background .18s,transform .15s;-webkit-tap-highlight-color:transparent}
+.qty-btn:hover{background:rgba(255,255,255,.28)}
+.qty-btn:active{transform:scale(.9)}
+.qty-val{min-width:26px;text-align:center;font:800 13px var(--f-sans);color:var(--gold-lt);padding:0 4px}
+
+@media(min-width:640px){.menu-card{flex-direction:column;gap:0;padding:10px}.card-thumb{width:100%;height:auto;aspect-ratio:4/3;border-radius:18px;font-size:64px}.card-body{padding:14px 8px 8px}.dish-name{font-size:21px}.dish-desc{font-size:13px}}
+/* STATES */
+.state-box{text-align:center;padding:1.5rem 0;color:var(--red-900)}
+.skeleton-grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:640px){.skeleton-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.skeleton-grid{grid-template-columns:repeat(3,1fr)}}
+.skeleton{height:134px;border-radius:var(--radius);border:1px solid rgba(255,255,255,.7);background:linear-gradient(100deg,rgba(255,255,255,.35) 30%,rgba(255,255,255,.8) 50%,rgba(255,255,255,.35) 70%);background-size:250% 100%;animation:shimmer 1.4s linear infinite}
+@media(min-width:640px){.skeleton{height:260px}}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+.loading-label{margin-top:1.4rem;font:600 12px var(--f-sans);letter-spacing:.28em;text-transform:uppercase;color:var(--red-800)}
+.empty{text-align:center;padding:3.5rem 1rem;color:var(--red-900);font:italic 400 22px var(--f-display)}
+.error-title{font-family:var(--f-display);color:var(--red-800);font-size:20px;margin-bottom:10px}
+.error-body{font-size:13px;line-height:1.8}
+.error-body strong{color:var(--red-700);font-weight:700}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:9000;background:rgba(60,2,6,.55);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);align-items:flex-end;justify-content:center}
+@media(min-width:560px){.modal-overlay{align-items:center;padding:1.5rem}}
+.modal-overlay.open{display:flex;animation:fade .25s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal-card{position:relative;width:100%;max-width:520px;max-height:94svh;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;background:linear-gradient(160deg,rgba(255,252,244,.92),rgba(255,246,228,.78));color:var(--ink);-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);border-radius:30px 30px 0 0;border:1.5px solid rgba(255,255,255,.85);border-bottom:none;box-shadow:0 -14px 70px rgba(60,2,6,.5),inset 0 1px 0 #fff;animation:sheet .5s var(--ease)}
+.modal-card::-webkit-scrollbar{display:none}
+@media(min-width:560px){.modal-card{border-radius:30px;border-bottom:1.5px solid rgba(255,255,255,.85);animation:popin .4s var(--ease)}}
+@keyframes sheet{from{transform:translateY(70px) rotateX(12deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes popin{from{transform:perspective(900px) rotateX(10deg) scale(.94) translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.grab{width:42px;height:4px;border-radius:4px;background:rgba(255,255,255,.7);position:absolute;top:9px;left:50%;transform:translateX(-50%);z-index:12}
+@media(min-width:560px){.grab{display:none}}
+.modal-viewer-wrap{position:relative;width:100%;height:330px;overflow:hidden;background:radial-gradient(circle at 50% 35%,#d9262e,#7a080d 80%);border-radius:0 0 28px 28px}
+model-viewer{display:block;width:100%;height:100%;background:transparent;--progress-bar-color:#d9b25f;--progress-mask:transparent}
+.mv-ar-badge{position:absolute;top:16px;left:16px;z-index:6;background:var(--gold-grad);color:var(--red-900);border-radius:99px;padding:5px 13px;font:700 10px var(--f-sans);letter-spacing:.14em;text-transform:uppercase;box-shadow:0 4px 12px rgba(0,0,0,.3);opacity:0;transform:translateY(-6px);transition:all .4s var(--ease);pointer-events:none}
+.mv-ar-badge.visible{opacity:1;transform:none}
+.mv-zoom-col{position:absolute;left:14px;bottom:18px;z-index:7;display:flex;flex-direction:column;gap:8px}
+.mv-zoom-col .zbtn{background:rgba(255,255,255,.85)}
+.modal-close{position:absolute;top:14px;right:14px;z-index:12;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.85);border:1.5px solid #fff;color:var(--red-700);cursor:pointer;display:grid;place-items:center;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(0,0,0,.3);transition:all .25s var(--ease)}
+.modal-close svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;fill:none}
+.modal-close:hover{background:var(--red-700);color:#fff;transform:rotate(90deg)}
+.modal-ar-launch-btn{display:inline-flex;align-items:center;gap:9px;background:var(--gold-grad);color:var(--red-900);border:1px solid rgba(255,250,224,.85);border-radius:99px;padding:13px 28px;min-height:48px;font:700 12.5px var(--f-sans);letter-spacing:.11em;text-transform:uppercase;cursor:pointer;white-space:nowrap;box-shadow:0 10px 28px rgba(0,0,0,.4),inset 0 1.5px 0 rgba(255,255,255,.75);transition:transform .2s var(--ease),box-shadow .2s}
+.modal-ar-launch-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.modal-ar-launch-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 14px 34px rgba(0,0,0,.5),inset 0 1.5px 0 rgba(255,255,255,.85)}
+.modal-ar-launch-btn:disabled{opacity:.9;cursor:progress}
+.btn-spin{width:14px;height:14px;border:2px solid rgba(108,6,11,.25);border-top-color:var(--red-900);border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-body{padding:18px 1.6rem 1.9rem;position:relative;z-index:4}
+.modal-name{font-family:var(--f-display);font-size:30px;font-weight:700;color:var(--red-800);line-height:1.2}
+.modal-body .tags-row{margin:12px 0 0}
+.modal-desc{margin:16px 0 14px;font-size:14px;line-height:1.8;color:var(--ink-mid);padding-left:16px;border-left:3px solid var(--gold)}
+.modal-tech{display:none}
+.modal-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:18px;border-top:1px solid rgba(169,125,44,.4)}
+.modal-price{font-family:var(--f-display);font-size:36px;font-weight:700;color:var(--red-700);display:flex;align-items:baseline;gap:3px;line-height:1}
+.modal-price .price-sym{font-size:18px}
+.modal-footer-right{display:flex;align-items:center;gap:12px;margin-left:auto}
+.modal-note{font:600 10px var(--f-sans);color:var(--ink-soft);letter-spacing:.1em;text-transform:uppercase;text-align:right;line-height:1.4;max-width:120px}
+
+/* FLOATING CART BAR */
+.floating-cart{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:translate(-50%,130%);z-index:8500;width:calc(100% - 24px);max-width:540px;padding:10px 12px 10px 18px;border-radius:999px;background:linear-gradient(135deg,#6c060b 0%,#4a0508 100%);border:1.5px solid var(--gold);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 20px 50px rgba(42,12,14,.55),inset 0 1px 0 rgba(255,255,255,.3);opacity:0;visibility:hidden;pointer-events:none;transition:transform .38s var(--ease),opacity .3s ease,visibility .3s;cursor:pointer}
+.floating-cart.visible{transform:translate(-50%,0);opacity:1;visibility:visible;pointer-events:auto}
+.fc-left{display:flex;align-items:center;gap:12px;min-width:0}
+.fc-badge{min-width:34px;height:34px;border-radius:50%;background:var(--gold-grad);color:var(--red-900);font:800 13px var(--f-brand);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.fc-meta{display:flex;flex-direction:column;min-width:0}
+.fc-total{font:700 18px/1.1 var(--f-display);color:var(--gold-lt)}
+.fc-sub{font:500 11px/1.2 var(--f-sans);color:rgba(255,255,255,.78);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-cta{display:inline-flex;align-items:center;gap:8px;background:var(--gold-grad);color:var(--red-900);border:none;border-radius:999px;padding:11px 20px;font:800 12px var(--f-sans);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);white-space:nowrap}
+
+/* CART & ORDER SUMMARY */
+.cart-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:20px 1.5rem 14px;border-bottom:1px solid rgba(169,125,44,.28)}
+.cart-sheet-title{font-family:var(--f-display);font-size:24px;font-weight:700;color:var(--red-800)}
+.cart-body{padding:14px 1.4rem 1.6rem;display:flex;flex-direction:column;gap:14px}
+.cart-table-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:16px;background:rgba(255,255,255,.65);border:1px solid rgba(169,125,44,.4)}
+.cart-table-row label{font:700 12px var(--f-sans);text-transform:uppercase;letter-spacing:.08em;color:var(--red-800)}
+.cart-table-input{width:110px;height:36px;border-radius:10px;border:1.5px solid rgba(163,13,20,.3);background:#fff;padding:0 10px;font:700 14px var(--f-sans);color:var(--ink);text-align:center;outline:none}
+.cart-table-input:focus{border-color:var(--red-600);box-shadow:0 0 0 3px rgba(192,18,26,.15)}
+.cart-items-list{display:flex;flex-direction:column;gap:10px;max-height:42svh;overflow-y:auto;padding-right:2px}
+.cart-item-card{padding:12px;border-radius:18px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.95);box-shadow:0 6px 18px rgba(108,6,11,.08);display:flex;flex-direction:column;gap:8px}
+.ci-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ci-info{min-width:0;flex:1}
+.ci-name{font:700 15px/1.25 var(--f-display);color:var(--red-800)}
+.ci-unit{font:600 12px var(--f-sans);color:var(--ink-soft);margin-top:2px}
+.ci-line-total{font:700 16px var(--f-display);color:var(--red-700);min-width:60px;text-align:right}
+.ci-note{width:100%;height:34px;border-radius:10px;border:1px dashed rgba(163,13,20,.32);background:rgba(255,252,245,.9);padding:0 11px;font:400 12px var(--f-sans);color:var(--ink);outline:none}
+.ci-note::placeholder{color:var(--ink-soft)}
+.ci-note:focus{border-style:solid;border-color:var(--red-600);background:#fff}
+.cart-order-note{width:100%;min-height:58px;border-radius:14px;border:1px solid rgba(169,125,44,.45);background:rgba(255,255,255,.75);padding:9px 12px;font:400 12.5px var(--f-sans);color:var(--ink);resize:vertical;outline:none}
+.cart-summary-box{padding:12px 14px;border-radius:18px;background:rgba(217,178,95,.18);border:1px solid rgba(169,125,44,.45);display:flex;align-items:center;justify-content:space-between}
+.cs-label{font:700 13px var(--f-sans);text-transform:uppercase;letter-spacing:.1em;color:var(--red-900)}
+.cs-amount{font:700 28px var(--f-display);color:var(--red-800)}
+.wa-send-btn{width:100%;min-height:50px;border:none;border-radius:999px;background:var(--wa-grad);color:#fff;font:800 13.5px var(--f-sans);letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:0 12px 28px rgba(18,140,126,.4);transition:transform .2s var(--ease),box-shadow .2s}
+.wa-send-btn:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(18,140,126,.55)}
+.wa-send-btn svg{width:20px;height:20px;fill:currentColor}
+.cart-sec-actions{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.cart-aux-btn{flex:1;min-height:40px;border-radius:999px;border:1px solid rgba(163,13,20,.28);background:rgba(255,255,255,.75);color:var(--red-800);font:700 11.5px var(--f-sans);padding:8px 12px;cursor:pointer;transition:all .2s}
+.cart-aux-btn:hover{background:#fff;border-color:var(--red-700)}
+
+/* TOAST */
+.toast{position:fixed;top:18px;left:50%;transform:translate(-50%,-200%);opacity:0;visibility:hidden;z-index:12000;background:rgba(20,4,5,.92);color:var(--gold-lt);border:1px solid var(--gold);padding:10px 18px;border-radius:999px;font:600 12.5px var(--f-sans);box-shadow:0 12px 30px rgba(0,0,0,.4);transition:transform .3s var(--ease),opacity .3s ease,visibility .3s;pointer-events:none;max-width:92vw;text-align:center}
+.toast.show{transform:translate(-50%,0);opacity:1;visibility:visible}
+
+/* ───── WHOLE-TABLE AR (TABLE SPREAD) ───── */
+.spread-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--gold-grad);color:var(--red-900);border:1px solid rgba(255,250,224,.85);padding:10px 18px;border-radius:999px;font:700 12.5px var(--f-sans);letter-spacing:.03em;cursor:pointer;box-shadow:0 10px 26px rgba(108,6,11,.28),inset 0 1.5px 0 rgba(255,255,255,.78);transition:transform .25s var(--ease),box-shadow .25s;-webkit-tap-highlight-color:transparent}
+.spread-btn:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 34px rgba(108,6,11,.4),inset 0 1.5px 0 rgba(255,255,255,.9)}
+.spread-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.spread-cta-row{display:flex;justify-content:center;margin:0 0 1.4rem}
+.spread-cta-big{padding:13px 26px;font-size:13.5px}
+.spread-head{padding:22px 1.5rem 12px;border-bottom:1px solid rgba(169,125,44,.28);padding-right:64px}
+.spread-title{font-family:var(--f-display);font-size:24px;font-weight:700;color:var(--red-800);line-height:1.2}
+.spread-sub{margin-top:6px;font:400 12.5px/1.55 var(--f-sans);color:var(--ink-mid)}
+.spread-body{padding:14px 1.4rem 1.6rem;display:flex;flex-direction:column;gap:12px}
+.spread-presets{display:flex;gap:8px;flex-wrap:wrap}
+.spread-chip{cursor:pointer;border:1px solid rgba(163,13,20,.28);background:rgba(255,255,255,.75);color:var(--red-800);font:700 11.5px var(--f-sans);padding:8px 14px;border-radius:999px;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.spread-chip:hover{background:#fff;border-color:var(--red-700)}
+.spread-chip.primary{background:var(--red-grad);color:var(--gold-lt);border-color:transparent;box-shadow:0 6px 16px rgba(108,6,11,.3)}
+.spread-list{display:flex;flex-direction:column;gap:9px;max-height:38svh;overflow-y:auto;padding:2px}
+.spread-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:18px;background:rgba(255,255,255,.66);border:1.5px solid rgba(255,255,255,.95);cursor:pointer;transition:all .2s var(--ease);-webkit-tap-highlight-color:transparent;outline:none}
+.spread-row:hover{background:rgba(255,255,255,.9)}
+.spread-row:focus-visible{box-shadow:0 0 0 3px rgba(192,18,26,.25)}
+.spread-row.selected{border-color:var(--red-600);background:#fff;box-shadow:0 0 0 3px rgba(192,18,26,.12),0 8px 20px rgba(108,6,11,.12)}
+.spread-check{width:24px;height:24px;flex-shrink:0;border-radius:50%;border:2px solid rgba(163,13,20,.4);display:grid;place-items:center;font:800 13px var(--f-sans);color:transparent;transition:all .2s}
+.spread-row.selected .spread-check{background:var(--red-grad);border-color:transparent;color:#fff}
+.spread-thumb{width:46px;height:46px;flex-shrink:0;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 30% 20%,#fff,#fbf3e4);border:1px solid rgba(255,255,255,.9);display:grid;place-items:center;font-size:22px}
+.spread-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.spread-meta{display:flex;flex-direction:column;min-width:0;flex:1}
+.spread-name{font:700 15px/1.25 var(--f-display);color:var(--red-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spread-cat{font:600 11px var(--f-sans);color:var(--ink-soft);margin-top:2px}
+.spread-price{font:700 15px var(--f-display);color:var(--red-700);flex-shrink:0}
+.spread-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:18px;background:rgba(217,178,95,.18);border:1px solid rgba(169,125,44,.45)}
+.spread-count{font:700 12px var(--f-sans);text-transform:uppercase;letter-spacing:.08em;color:var(--red-900)}
+.spread-total{font:700 22px var(--f-display);color:var(--red-800)}
+.spread-go-btn{width:100%;min-height:52px;border:none;border-radius:999px;background:var(--gold-grad);color:var(--red-900);font:800 13px var(--f-sans);letter-spacing:.09em;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:0 12px 28px rgba(108,6,11,.3),inset 0 1.5px 0 rgba(255,255,255,.8);transition:transform .2s var(--ease),box-shadow .2s,opacity .2s}
+.spread-go-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.spread-go-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 16px 34px rgba(108,6,11,.42),inset 0 1.5px 0 rgba(255,255,255,.9)}
+.spread-go-btn:disabled{opacity:.6;cursor:not-allowed}
+.spread-go-btn.ready{background:var(--red-grad);color:var(--gold-lt);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 12px 28px rgba(108,6,11,.3)}50%{box-shadow:0 12px 36px rgba(217,38,46,.65)}}
+.spread-note{font:500 11px/1.5 var(--f-sans);color:var(--ink-soft);text-align:center}
+.spread-empty{text-align:center;padding:1.4rem 0;color:var(--ink-soft);font-style:italic;font-size:13px}
+.ar-spread-chip{display:none;align-self:center;max-width:100%;align-items:center;gap:8px;background:rgba(20,4,5,.88);color:var(--gold-lt);border:1px solid rgba(217,178,95,.55);padding:8px 16px;border-radius:999px;font:700 11.5px var(--f-sans);letter-spacing:.03em;text-align:center;box-shadow:0 8px 22px rgba(0,0,0,.45)}
+#global-ar-viewer.spread-mode .ar-spread-chip{display:flex}
+#global-ar-viewer.spread-mode .ar-side-btn,#global-ar-viewer.spread-mode .ar-carousel-wrap{display:none}
+
+/* CART → PLACE ON TABLE */
+.cart-place-box{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:20px;background:rgba(217,178,95,.16);border:1px solid rgba(169,125,44,.45)}
+.cart-place-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.cart-place-strip::-webkit-scrollbar{display:none}
+.cp-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;padding:4px 12px 4px 4px;border-radius:999px;background:#fff;border:1px solid rgba(163,13,20,.22);font:700 12px var(--f-sans);color:var(--red-800);white-space:nowrap}
+.cp-thumb{width:30px;height:30px;border-radius:50%;overflow:hidden;background:radial-gradient(circle,#fff,#f3e4c6);display:grid;place-items:center;font-size:15px;flex-shrink:0}
+.cp-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ───── PREMIUM ORDER SHEET ───── */
+.cart-card{max-width:480px;padding-bottom:0;background:linear-gradient(180deg,#fffbf2 0%,#f8ecd3 100%);border:1px solid rgba(217,178,95,.6);border-bottom:none;border-radius:34px 34px 0 0;box-shadow:0 -20px 80px rgba(42,4,8,.55),inset 0 1px 0 #fff}
+@media(min-width:560px){.cart-card{border-radius:34px;border-bottom:1px solid rgba(217,178,95,.6)}}
+.cart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold-grad);z-index:11}
+.cart-card .cart-sheet-head{display:block;padding:28px 1.5rem 14px;border-bottom:none}
+.cart-card .cart-sheet-head::after{content:'';display:block;height:1px;margin-top:16px;background:linear-gradient(90deg,transparent,var(--gold) 20%,var(--gold) 80%,transparent)}
+.cart-eyebrow{font:700 10px var(--f-sans);letter-spacing:.32em;text-transform:uppercase;color:var(--gold-dk);margin-bottom:6px}
+.cart-card .cart-sheet-title{font-size:32px;line-height:1.1;letter-spacing:.01em;color:var(--red-900)}
+.cart-head-meta{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.cart-count-pill{font:700 11px var(--f-sans);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-lt);background:var(--red-grad);padding:7px 14px;border-radius:999px;box-shadow:0 6px 14px rgba(108,6,11,.25)}
+.cart-table-chip{display:inline-flex;align-items:center;gap:8px;padding:3px 4px 3px 14px;border-radius:999px;background:#fff;border:1px solid rgba(169,125,44,.5);font:700 11px var(--f-sans);letter-spacing:.1em;text-transform:uppercase;color:var(--red-800);cursor:text}
+.cart-card .cart-table-input{width:54px;height:28px;border-radius:999px;border:none;background:rgba(217,178,95,.22);padding:0;font:800 14px var(--f-sans);color:var(--red-900);text-align:center}
+.cart-card .cart-body{padding:8px 1.25rem 1.3rem;gap:16px}
+.cart-card .cart-items-list{max-height:none;overflow:visible;gap:0;padding:2px 16px;background:#fff;border-radius:24px;border:1px solid rgba(169,125,44,.3);box-shadow:0 12px 32px rgba(108,6,11,.09)}
+.cart-card .cart-item-card{display:grid;grid-template-columns:62px 1fr auto;column-gap:13px;row-gap:8px;align-items:center;padding:15px 0;background:none;border:none;border-radius:0;box-shadow:none;border-bottom:1px dashed rgba(169,125,44,.42)}
+.cart-card .cart-item-card:last-child{border-bottom:none}
+.ci-thumb{width:62px;height:62px;border-radius:20px;overflow:hidden;background:radial-gradient(circle at 30% 20%,#fff,#fbf3e4);border:1px solid rgba(217,178,95,.6);box-shadow:0 8px 18px rgba(108,6,11,.18);display:grid;place-items:center;font-size:26px}
+.ci-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ci-main{min-width:0}
+.cart-card .ci-name{font:700 16px/1.25 var(--f-display);color:var(--red-900)}
+.cart-card .ci-unit{font:500 12px var(--f-sans);color:var(--ink-soft);margin-top:3px}
+.ci-note-toggle{margin-top:6px;background:none;border:none;padding:0;font:700 11px var(--f-sans);letter-spacing:.04em;color:var(--gold-dk);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ci-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.cart-card .ci-line-total{min-width:0;font:700 17px var(--f-display);color:var(--red-700)}
+.cart-card .ci-side .qty-stepper{height:32px}
+.cart-card .ci-side .qty-btn{width:26px;height:26px;font-size:14px}
+.cart-card .ci-side .qty-val{min-width:22px;font-size:12px}
+.cart-card .ci-note{display:none;grid-column:1/-1;height:40px;border-radius:12px;font-size:12.5px}
+.cart-card .cart-item-card.note-open .ci-note{display:block}
+.cart-card .cart-place-box{position:relative;overflow:hidden;gap:12px;padding:16px;border-radius:26px;background:radial-gradient(120% 140% at 0% 0%,#a30d14 0%,#6c060b 48%,#3a0306 100%);border:1px solid rgba(217,178,95,.75);box-shadow:0 18px 40px rgba(74,5,8,.4),inset 0 1px 0 rgba(255,255,255,.22)}
+.cart-card .cart-place-box::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.14) 50%,transparent 65%);transform:translateX(-130%);animation:sheen 6s ease-in-out infinite}
+.cp-eyebrow{font:700 10px var(--f-sans);letter-spacing:.28em;text-transform:uppercase;color:var(--gold-lt)}
+.cart-card .cart-place-strip{align-items:center;gap:14px;overflow:visible;padding:0}
+.cp-stack{display:flex;flex-shrink:0;padding-left:12px}
+.cp-stack .cp-thumb{width:44px;height:44px;margin-left:-12px;border:2px solid var(--gold-lt);box-shadow:0 4px 10px rgba(0,0,0,.4)}
+.cp-names{display:flex;flex-direction:column;min-width:0;gap:2px}
+.cp-names b{font:700 15px var(--f-display);color:#fff}
+.cp-names span{font:500 11.5px var(--f-sans);color:rgba(255,255,255,.78);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-card .cart-place-box .spread-go-btn{min-height:54px;background:var(--gold-grad);color:var(--red-900);box-shadow:0 10px 26px rgba(0,0,0,.4),inset 0 1.5px 0 rgba(255,255,255,.8);position:relative;z-index:1}
+.cart-card .cart-place-box .spread-go-btn.ready{background:var(--gold-grad);color:var(--red-900);animation:goldPulse 1.6s ease-in-out infinite}
+@keyframes goldPulse{0%,100%{box-shadow:0 10px 26px rgba(0,0,0,.4),0 0 0 0 rgba(248,229,171,.6)}50%{box-shadow:0 10px 26px rgba(0,0,0,.4),0 0 0 10px rgba(248,229,171,0)}}
+.cart-card .cart-order-note{min-height:64px;padding:12px 14px;border-radius:18px;background:#fff;border:1px solid rgba(169,125,44,.4)}
+.cart-card .cart-summary-box{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:16px 18px;border-radius:22px;background:#fff;border:1px solid rgba(169,125,44,.35);box-shadow:0 10px 26px rgba(108,6,11,.07)}
+.cs-row{display:flex;justify-content:space-between;align-items:baseline;font:600 13px var(--f-sans);color:var(--ink-mid)}
+.cs-row.cs-total{padding-top:12px;border-top:1px dashed rgba(169,125,44,.55)}
+.cart-card .cs-amount{font-size:30px;color:var(--red-800)}
+.cart-clear-link{align-self:center;background:none;border:none;color:var(--ink-soft);font:600 12px var(--f-sans);cursor:pointer;padding:4px 12px;text-decoration:underline;text-underline-offset:3px}
+.cart-sticky-bar{position:sticky;bottom:0;z-index:20;display:flex;align-items:center;gap:14px;padding:12px 1.25rem calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(255,250,240,.9),rgba(250,238,212,.98));-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid rgba(217,178,95,.6);box-shadow:0 -12px 30px rgba(108,6,11,.1)}
+.cs-sticky-total{display:flex;flex-direction:column;line-height:1.1}
+.cs-sticky-total small{font:700 9.5px var(--f-sans);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft)}
+.cs-sticky-total b{font:700 25px var(--f-display);color:var(--red-800)}
+.cart-sticky-bar .wa-send-btn{flex:1;width:auto;min-height:52px;font-size:12.5px}
+.cart-empty{text-align:center;padding:2.4rem 1rem;color:var(--ink-soft)}
+.cart-empty-ico{font-size:42px;margin-bottom:8px}
+.cart-empty p{font:italic 400 16px/1.5 var(--f-display)}
+#cart-modal.cart-empty-state .cart-place-box,#cart-modal.cart-empty-state .cart-summary-box,#cart-modal.cart-empty-state .cart-order-note,#cart-modal.cart-empty-state .cart-clear-link,#cart-modal.cart-empty-state .cart-sticky-bar{display:none!important}
+
+/* ORDER BAR INSIDE AR */
+.ar-order-bar{display:none;align-items:center;justify-content:space-between;gap:10px;padding:7px 7px 7px 18px;border-radius:999px;background:linear-gradient(135deg,#6c060b,#4a0508);border:1.5px solid var(--gold);color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.55)}
+.ar-order-bar.show{display:flex}
+.ar-order-info{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.ar-order-info span{font:600 11px var(--f-sans);color:rgba(255,255,255,.8)}
+.ar-order-info b{font:700 19px var(--f-display);color:var(--gold-lt)}
+.ar-order-btn{flex-shrink:0;border:none;cursor:pointer;background:var(--gold-grad);color:var(--red-900);border-radius:999px;padding:12px 22px;font:800 12.5px var(--f-sans);letter-spacing:.07em;text-transform:uppercase;box-shadow:0 6px 18px rgba(0,0,0,.4);-webkit-tap-highlight-color:transparent}
+.ar-order-btn:active{transform:scale(.96)}
+
+/* AR SCREEN OVERLAY HUD */
+#global-ar-viewer{position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;opacity:0;pointer-events:none}
+#global-ar-viewer.ar-active{z-index:9999;opacity:1;pointer-events:auto}
+.ar-hud{display:none;position:fixed;inset:0;pointer-events:none;z-index:10000;flex-direction:column;justify-content:space-between;padding:max(env(safe-area-inset-top),16px) 16px max(env(safe-area-inset-bottom),22px)}
+model-viewer[ar-status="session-started"] .ar-hud,model-viewer[ar-status="object-placed"] .ar-hud{display:flex}
+.ar-hud-top{display:flex;justify-content:space-between;align-items:center;gap:10px;pointer-events:auto}
+.ar-exit-btn{width:40px;height:40px;flex-shrink:0;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(20,4,5,.88);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.ar-exit-btn svg{width:16px;height:16px;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.ar-add-quick{display:inline-flex;align-items:center;gap:7px;background:var(--gold-grad);color:var(--red-900);border:none;border-radius:999px;padding:9px 16px;font:800 12px var(--f-sans);letter-spacing:.05em;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.ar-side-btn{position:absolute;top:50%;transform:translateY(-50%);width:54px;height:54px;border-radius:50%;display:grid;place-items:center;cursor:pointer;pointer-events:auto;z-index:5;background:rgba(20,4,5,.88);border:1.5px solid var(--gold-lt);box-shadow:0 8px 24px rgba(0,0,0,.5);transition:transform .15s ease,background .15s ease;-webkit-tap-highlight-color:transparent}
+.ar-side-btn:active{transform:translateY(-50%) scale(.9);background:rgba(217,178,95,.4)}
+.ar-side-btn svg{width:22px;height:22px;stroke:var(--gold-lt);fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ar-side-prev{left:12px}
+.ar-side-next{right:12px}
+.ar-placement-hint{align-self:center;background:rgba(20,4,5,.88);color:var(--gold-lt);border:1px solid rgba(217,178,95,.5);padding:10px 20px;border-radius:999px;font:600 12.5px var(--f-sans);letter-spacing:.04em;text-align:center;max-width:88vw;box-shadow:0 10px 30px rgba(0,0,0,.45);transition:opacity .35s ease}
+model-viewer[ar-status="object-placed"] .ar-placement-hint{opacity:0}
+.ar-hud-bottom{display:flex;flex-direction:column;gap:12px;width:100%;max-width:460px;margin:0 auto;pointer-events:auto}
+.ar-carousel-wrap{display:flex;flex-direction:column;gap:6px}
+.ar-carousel-label{align-self:center;font:700 10px var(--f-sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold-lt);text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.ar-carousel{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding:4px 6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scroll-behavior:auto}
+.ar-carousel::-webkit-scrollbar{display:none}
+.ar-carousel-item{flex:0 0 auto;scroll-snap-align:center;display:flex;align-items:center;gap:9px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(20,4,5,.86);border:1.5px solid rgba(255,255,255,.22);color:#fff;cursor:pointer;transition:all .25s var(--ease);box-shadow:0 8px 20px rgba(0,0,0,.4);text-align:left;max-width:210px}
+.ar-carousel-item.active{background:linear-gradient(135deg,rgba(163,13,20,.92),rgba(74,5,8,.95));border-color:var(--gold-lt);box-shadow:0 10px 26px rgba(0,0,0,.65),0 0 0 2px rgba(217,178,95,.35);transform:translateY(-2px) scale(1.03)}
+.ar-c-thumb{width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;background:radial-gradient(circle,#fff,#f3e4c6);display:grid;place-items:center;font-size:18px;border:1px solid rgba(217,178,95,.6)}
+.ar-c-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ar-c-meta{display:flex;flex-direction:column;min-width:0}
+.ar-c-name{font:600 12px/1.2 var(--f-sans);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar-c-price{font:700 11px/1.2 var(--f-sans);color:var(--gold-lt);margin-top:2px}
+.ar-bottom-bar{display:flex;align-items:center;justify-content:space-around;width:100%;padding:10px 20px;border-radius:999px;background:rgba(20,4,5,.88);border:1px solid rgba(255,255,255,.22);box-shadow:0 16px 40px rgba(0,0,0,.55)}
+.ar-ctl-btn{width:50px;height:50px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 10px var(--f-sans);cursor:pointer;transition:transform .2s,background .2s;overflow:hidden;position:relative}
+.ar-ctl-btn:active{transform:scale(.92)}
+.ar-ctl-btn svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ar-shutter-btn{width:66px;height:66px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25);padding:4px;cursor:pointer;display:grid;place-items:center;box-shadow:0 6px 22px rgba(0,0,0,.45);transition:transform .15s ease}
+.ar-shutter-btn::after{content:'';width:100%;height:100%;border-radius:50%;background:var(--gold-grad);transition:transform .15s ease}
+.ar-shutter-btn:active{transform:scale(.92)}
+.ar-shutter-btn:active::after{transform:scale(.86);background:#fff}
+.ar-media-thumb{width:100%;height:100%;object-fit:cover;display:none}
+.ar-flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:10001;transition:opacity .25s ease}
+.ar-flash.active{opacity:.85}
+.capture-modal{display:none;position:fixed;inset:0;z-index:11000;background:rgba(15,2,4,.88);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);align-items:center;justify-content:center;padding:20px}
+.capture-modal.open{display:flex}
+.capture-box{background:#fff8ea;border-radius:26px;padding:16px;max-width:420px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6);border:2px solid var(--gold)}
+.capture-box img{width:100%;border-radius:18px;max-height:62vh;object-fit:contain;background:#1d0507}
+.capture-actions{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.ar-hud *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* FOOTER */
+.site-footer{position:relative;z-index:1;text-align:center;margin-top:2rem;color:#fff;padding:2.8rem 1rem calc(2.4rem + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(154,11,18,.82) 0%,rgba(74,5,8,.94) 100%);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);border-top:1px solid rgba(255,255,255,.4);box-shadow:inset 0 3px 0 var(--gold)}
+.site-footer .ld-logo{font-size:34px;margin-top:8px}
+.site-footer .ar-banner{margin-top:12px;font-size:11px;max-width:420px;color:#fff}
+.site-footer .ar-banner::before,.site-footer .ar-banner::after{background:var(--gold-grad)}
+.site-footer p{margin-top:18px;font-size:12px;letter-spacing:.06em;line-height:1.9;color:rgba(255,255,255,.82)}
+.site-footer small{color:rgba(255,255,255,.58);font-size:11px}
+@media(max-width:420px){.card-thumb{width:92px;height:92px}.dish-name{font-size:18px}.modal-viewer-wrap{height:290px}.step-t{font-size:12px}.hero-panel{padding:2rem 1rem 1.6rem;border-radius:32px}}
+/* MOBILE LAYOUT FIXES */
+.search-row,.search-box,.controls,.controls-inner,.stage,.stage-card,.sc-swap,.sc-foot{min-width:0}
+.search-box{flex:1 1 180px}
+#search{min-width:0}
+.veg-toggle{flex:0 0 auto;max-width:42%;padding-inline:10px;gap:7px}
+.tabs-inner{min-width:0;max-width:100%;overscroll-behavior-x:contain}
+.stage-card{width:100%}
+.sc-name,.sc-desc{overflow-wrap:anywhere}
+.sc-foot{flex-wrap:wrap}
+.sc-price{flex:0 0 auto}
+.sc-foot .ar-btn{max-width:100%;white-space:nowrap}
+.controls{max-width:calc(100% - 20px)}
+.stage>.controls{width:100%;max-width:640px}
+.stage .controls-inner{width:100%}
+@media(max-width:520px){.stage{padding-inline:10px}.stage .controls-inner{padding:8px;gap:8px}.search-row{gap:7px}#search{height:42px;padding-left:36px;font-size:13px}.search-box svg{left:12px}.veg-toggle{height:42px;font-size:11px;padding-inline:8px;max-width:39%}.veg-toggle .sw{flex:0 0 30px}.tab-btn{padding:9px 15px;font-size:12px}.stage-card{padding:1rem 1rem .9rem;border-radius:24px}.sc-name{font-size:clamp(21px,6vw,28px)}.sc-desc{font-size:12px;line-height:1.5}.sc-foot{align-items:center}.sc-price{font-size:27px}.sc-foot .ar-btn,.card-footer .ar-btn{padding:8px 12px;font-size:10px;min-height:36px}.add-dish-btn{padding:8px 13px;font-size:10.5px;min-height:36px}.qty-stepper{height:36px}.qty-btn{width:30px;height:30px}}
+@media(max-width:360px){.search-row{flex-wrap:wrap}.search-box{flex-basis:100%}.veg-toggle{max-width:none;align-self:flex-end}.sc-foot .ar-btn{white-space:normal}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="goldG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8e5ab"/><stop offset=".5" stop-color="#e0b862"/><stop offset="1" stop-color="#b88a34"/></linearGradient>
+    <linearGradient id="redG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9262e"/><stop offset="1" stop-color="#6c060b"/></linearGradient>
+  </defs>
+</svg>
+
+<div class="progress" id="progress"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<header class="hero" id="hero">
+  <div class="hero-top">
+    <select id="lang-select" aria-label="Language">
+      <option value="en">English</option><option value="it">Italiano</option><option value="kn">ಕನ್ನಡ</option>
+      <option value="ta">தமிழ்</option><option value="ml">മലയാളം</option><option value="te">తెలుగు</option>
+    </select>
+    <div class="hero-top-right">
+      <button type="button" class="table-pill" id="table-pill" title="Click to set or change table number">
+        <span class="dot-live"></span>
+        <span id="table-pill-text">Table —</span>
+      </button>
+      <button type="button" class="spread-btn" id="spread-open-hero" style="display:none">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M3 3v6M21 3v6"/></svg>
+        <span id="ui-spread-hero">Table Spread</span>
+      </button>
+      <a href="FunZone.html" class="funzone-btn">🎮 FunZone</a>
+    </div>
+  </div>
+
+  <div class="hero-panel glass" id="hero-panel">
+    <p class="eyebrow" id="ui-eyebrow">One Menu · Every Cuisine</p>
+    <h1 class="brand">3D AR MENU</h1>
+    <p class="chef" id="ui-sub-tag">See every dish on your table before you order</p>
+    <div class="ornament"><i></i></div>
+    <div class="cuisine-chips" aria-label="Cuisines supported">
+      <span>Italian</span><span>Indian</span><span>Chinese</span><span>Continental</span><span>Mexican</span><span>Café &amp; Bakery</span><span>Street Food</span><span>+ more</span>
+    </div>
+
+    <div class="steps" role="list">
+      <div class="step" role="listitem">
+        <div class="step-ico"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></div>
+        <div class="step-n">01</div><div class="step-t" id="ui-step-1">Scan</div>
+      </div>
+      <div class="step" role="listitem">
+        <div class="step-ico"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <div class="step-n">02</div><div class="step-t" id="ui-step-2">Place</div>
+      </div>
+      <div class="step" role="listitem">
+        <div class="step-ico"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></div>
+        <div class="step-n">03</div><div class="step-t" id="ui-step-3">Experience</div>
+      </div>
+    </div>
+
+    <div class="hero-pills">
+      <i><b>AR</b><span id="ui-hp1">Table preview at real size</span></i>
+      <i><b>AI</b><span id="ui-hp2">Dish recommendations</span></i>
+      <i><b>3D</b><span id="ui-hp3">Zoom into every dish</span></i>
+    </div>
+
+    <div class="ar-banner"><span id="ui-ar-badge">Interactive 3D &amp; AR Preview</span></div>
+
+    <div class="powered">
+      Powered by
+      <span class="ld-logo" aria-label="LiveDish-AI">
+        <svg class="leaf" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3C10 3 4 8 4 15c0 1.6.4 3 1 4 1-4 4-8 9-10-4 3-6 7-7 11 1 .6 2.3 1 3.7 1C18 21 21 13 20 3z" fill="url(#goldG)"/></svg>
+        <span>LiveDish</span><span class="dash">-</span><span class="ai">AI</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="scroll-cue glass"><span class="mouse"><i></i></span><span id="ui-scroll">Scroll to explore</span></div>
+</header>
+
+<!-- Scroll-driven 3D dish showcase -->
+<section class="showcase" id="showcase" aria-label="Chef's showcase" style="display:none">
+  <div class="stage">
+    <nav class="controls glass" aria-label="Menu filters">
+      <div class="controls-inner">
+        <div class="search-row">
+          <label class="search-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="search" type="search" placeholder="Search dishes…" autocomplete="off" />
+          </label>
+          <button class="veg-toggle" id="veg-toggle" aria-pressed="false" type="button"><span class="sw"></span><span id="ui-veg-only">Veg only</span></button>
+        </div>
+        <div class="tabs-inner" id="tabs-inner"></div>
+      </div>
+    </nav>
+
+    <div class="stage-body">
+      <div class="halo" aria-hidden="true"><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i></div>
+      <div class="show-stack" id="show-stack"></div>
+    </div>
+
+    <div class="stage-card glass" id="stage-card">
+      <div class="sc-swap" id="sc-swap">
+        <div class="sc-top"><span class="sc-count" id="sc-count">01 / 01</span><span class="sc-cat" id="sc-cat"></span></div>
+        <h3 class="sc-name" id="sc-name"></h3>
+        <p class="sc-desc" id="sc-desc"></p>
+        <div class="sc-tech" style="display:none;">
+          <div class="tech-row"><b>AR</b><span id="sc-ar-t"></span></div>
+          <div class="tech-row"><b>AI</b><span id="sc-ai-t"></span></div>
+        </div>
+        <div class="sc-foot">
+          <div class="sc-price" id="sc-price"></div>
+          <div class="sc-actions">
+            <button class="ar-btn" id="sc-ar" type="button">View On Table</button>
+            <div class="cart-ctl-wrap" id="sc-cart-ctl"></div>
+          </div>
+        </div>
+      </div>
+      <div class="dots" id="sc-dots"></div>
+    </div>
+  </div>
+</section>
+
+<main class="main">
+  <h2 class="full-menu-title" id="ui-full-menu">Full Menu</h2>
+  <div class="spread-cta-row" id="spread-cta-row" style="display:none">
+    <button type="button" class="spread-btn spread-cta-big" id="spread-open-main">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M3 3v6M21 3v6"/></svg>
+      <span id="ui-spread-main">Build a Whole-Table AR Spread</span>
+    </button>
+  </div>
+  <div id="loading-state" class="state-box">
+    <div class="skeleton-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    <p class="loading-label" id="ui-loading">Loading...</p>
+  </div>
+  <div id="items-container" style="display:none"></div>
+</main>
+
+<!-- Floating Bottom Cart Bar -->
+<div class="floating-cart" id="floating-cart" role="region" aria-label="Shopping Cart">
+  <div class="fc-left">
+    <span class="fc-badge" id="fc-count">0</span>
+    <div class="fc-meta">
+      <span class="fc-total" id="fc-total">₹0</span>
+      <span class="fc-sub" id="fc-sub">Tap to review &amp; add notes</span>
+    </div>
+  </div>
+  <button type="button" class="fc-cta" id="fc-open-btn">
+    <span id="ui-view-cart">View Order</span> →
+  </button>
+</div>
+
+<!-- Full-Screen AR Viewer with In-AR Dish Carousel (single dish) or Whole-Table Spread -->
+<model-viewer
+  id="global-ar-viewer"
+  ar
+  ar-modes="webxr scene-viewer quick-look"
+  ar-placement="floor"
+  ar-scale="fixed"
+  camera-controls
+  touch-action="pan-y"
+  shadow-intensity="1"
+  shadow-softness="0.9"
+  environment-image="neutral"
+  exposure="1.05"
+  interaction-prompt="none"
+>
+  <button slot="ar-button" style="display:none;"></button>
+  <button slot="exit-webxr-ar-button" style="display:none;"></button>
+
+  <div class="ar-hud">
+    <div class="ar-hud-top">
+      <button type="button" class="ar-add-quick" id="ar-add-btn">+ Add to Order</button>
+      <button type="button" class="ar-exit-btn" id="ar-close-btn" aria-label="Exit AR">
+        <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>
+      </button>
+    </div>
+
+    <button type="button" class="ar-side-btn ar-side-prev" id="ar-side-prev" aria-label="Previous dish">
+      <svg viewBox="0 0 24 24"><polyline points="15 5 8 12 15 19"/></svg>
+    </button>
+    <button type="button" class="ar-side-btn ar-side-next" id="ar-side-next" aria-label="Next dish">
+      <svg viewBox="0 0 24 24"><polyline points="9 5 16 12 9 19"/></svg>
+    </button>
+
+    <div class="ar-hud-bottom">
+      <div class="ar-spread-chip" id="ar-spread-chip"></div>
+      <div class="ar-order-bar" id="ar-order-bar">
+        <div class="ar-order-info"><span id="ar-order-count"></span><b id="ar-order-total"></b></div>
+        <button type="button" class="ar-order-btn" id="ar-order-btn">Place Order →</button>
+      </div>
+      <div class="ar-carousel-wrap">
+        <div class="ar-carousel" id="ar-carousel" role="listbox" aria-label="Switch AR Dish"></div>
+      </div>
+
+      <div class="ar-bottom-bar">
+        <button type="button" class="ar-ctl-btn" id="ar-to-3d-btn" aria-label="Switch to 3D view">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          <span>3D</span>
+        </button>
+        <button type="button" class="ar-shutter-btn" id="ar-shutter-btn" aria-label="Capture AR Photo"></button>
+        <button type="button" class="ar-ctl-btn" id="ar-gallery-btn" aria-label="View captured item">
+          <img id="ar-media-thumb" class="ar-media-thumb" alt="Captured preview" />
+          <svg id="ar-gallery-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</model-viewer>
+
+<div class="ar-flash" id="ar-flash"></div>
+
+<div class="capture-modal" id="capture-modal" role="dialog" aria-modal="true" aria-label="Captured AR Preview">
+  <div class="capture-box">
+    <img id="capture-preview-img" src="" alt="Captured Dish" />
+    <div class="capture-actions">
+      <a id="capture-download-btn" class="ar-btn" download="Pinocchio-AR-Dish.png" style="text-decoration:none;">⬇ Save Photo</a>
+      <button type="button" class="ar-btn" id="capture-close-btn" style="background:#fff;">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3D / Dish Detail Modal -->
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-label="Dish detail">
+  <div class="modal-card">
+    <span class="grab"></span>
+    <button class="modal-close" id="modal-close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <div class="modal-viewer-wrap" id="modal-viewer-wrap">
+      <div class="mv-ar-badge" id="mv-ar-badge">✦ AR Ready</div>
+    </div>
+    <div class="modal-body">
+      <h2 class="modal-name" id="modal-name"></h2>
+      <div class="tags-row" id="modal-tags"></div>
+      <p class="modal-desc" id="modal-desc"></p>
+      <div class="modal-tech" style="display:none;">
+        <div class="tech-row"><b>AR</b><span id="modal-ar-t"></span></div>
+        <div class="tech-row"><b>AI</b><span id="modal-ai-t"></span></div>
+      </div>
+      <div class="modal-footer">
+        <div class="modal-price" id="modal-price"></div>
+        <div class="modal-footer-right">
+          <div class="modal-note" id="scale-info"></div>
+          <div class="cart-ctl-wrap" id="modal-cart-ctl"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Whole-Table AR: pick several dishes and place them together -->
+<div class="modal-overlay" id="spread-modal" role="dialog" aria-modal="true" aria-label="Whole-table AR">
+  <div class="modal-card">
+    <span class="grab"></span>
+    <button class="modal-close" id="spread-close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <div class="spread-head">
+      <h2 class="spread-title" id="ui-spread-title">Whole-Table AR</h2>
+      <p class="spread-sub" id="ui-spread-sub">Pick several dishes and see the full spread on your table at once — starter, main and dessert together.</p>
+    </div>
+    <div class="spread-body">
+      <div class="spread-presets">
+        <button type="button" class="spread-chip primary" id="spread-preset-full">Starter + Main + Dessert</button>
+        <button type="button" class="spread-chip" id="spread-preset-cart">My Order</button>
+        <button type="button" class="spread-chip" id="spread-preset-clear">Clear</button>
+      </div>
+      <div class="spread-list" id="spread-list" role="group" aria-label="Dishes"></div>
+      <div class="spread-summary">
+        <span class="spread-count" id="spread-count">0 / 6 selected</span>
+        <span class="spread-total" id="spread-total">₹0</span>
+      </div>
+      <button type="button" class="spread-go-btn" id="spread-go-btn"></button>
+      <div class="cart-sec-actions">
+        <button type="button" class="cart-aux-btn" id="spread-add-btn">+ Add all to order</button>
+      </div>
+      <p class="spread-note" id="ui-spread-note">Dishes are placed side by side at real size. Whole-table AR works best in Chrome on Android (WebXR) and on iPhone (AR Quick Look).</p>
+    </div>
+  </div>
+</div>
+
+<!-- Cart & Order Summary Modal -->
+<div class="modal-overlay" id="cart-modal" role="dialog" aria-modal="true" aria-label="Your Order Summary">
+  <div class="modal-card cart-card">
+    <span class="grab"></span>
+    <button class="modal-close" id="cart-close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <div class="cart-sheet-head">
+      <div class="cart-eyebrow">✦ Review &amp; Confirm</div>
+      <h2 class="cart-sheet-title" id="ui-order-summary">Your Order</h2>
+      <div class="cart-head-meta">
+        <span class="cart-count-pill" id="cart-head-count">0 items</span>
+        <label class="cart-table-chip" for="cart-table-input" id="ui-table-lbl">🍽️ Table
+          <input id="cart-table-input" class="cart-table-input" type="text" inputmode="numeric" placeholder="—" />
+        </label>
+      </div>
+    </div>
+    <div class="cart-body">
+
+      <div class="cart-items-list" id="cart-items-list"></div>
+
+      <div class="cart-place-box" id="cart-place-box" style="display:none">
+        <div class="cp-eyebrow">✦ Preview on your table</div>
+        <div class="cart-place-strip" id="cart-place-strip" aria-label="Dishes that will appear on your table"></div>
+        <button type="button" class="spread-go-btn" id="cart-place-btn"></button>
+      </div>
+
+      <textarea id="cart-general-note" class="cart-order-note" placeholder="Any overall table note? (e.g., serve starters together, allergies, extra plates…)"></textarea>
+
+      <div class="cart-summary-box">
+        <div class="cs-row"><span>Items</span><span id="cs-items-val">0</span></div>
+        <div class="cs-row cs-total">
+          <span class="cs-label" id="ui-total-lbl">Total Amount</span>
+          <span class="cs-amount" id="cart-grand-total">₹0</span>
+        </div>
+      </div>
+
+      <button type="button" class="cart-clear-link" id="cart-clear-btn">🗑️ Clear cart</button>
+    </div>
+
+    <div class="cart-sticky-bar">
+      <div class="cs-sticky-total"><small>Total</small><b id="cart-sticky-total">₹0</b></div>
+      <button type="button" class="wa-send-btn" id="wa-order-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.82 14.01c-.24.68-1.41 1.3-1.95 1.38-.5.08-1.13.11-1.83-.11-.42-.13-.97-.31-1.66-.61-2.92-1.26-4.82-4.21-4.97-4.4-.15-.19-1.19-1.58-1.19-3.02 0-1.44.75-2.15 1.02-2.44.27-.29.59-.37.79-.37.2 0 .4.01.57.01.18 0 .43-.07.67.51.24.59.82 2.02.9 2.17.07.15.12.32.02.51-.1.19-.15.32-.29.49-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.29.76 1.25 1.63 2.02 1.12.99 2.06 1.3 2.35 1.45.29.15.46.12.63-.07.17-.19.73-.85.92-1.15.19-.29.39-.24.66-.15.27.1 1.71.81 2 .95.29.15.49.22.56.34.07.12.07.71-.17 1.39z"/></svg>
+        <span id="ui-send-wa">Send Order via WhatsApp</span>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <span class="ld-logo" aria-label="LiveDish-AI">
+    <svg class="leaf" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3C10 3 4 8 4 15c0 1.6.4 3 1 4 1-4 4-8 9-10-4 3-6 7-7 11 1 .6 2.3 1 3.7 1C18 21 21 13 20 3z" fill="url(#goldG)"/></svg>
+    <span>LiveDish</span><span class="dash">-</span><span class="ai">AI</span>
+  </span>
+  <div class="ar-banner"><span>AR Menu Experience</span></div>
+  <p>
+    <span id="ui-footer">Tap any dish to view in 3D · Prices in ₹ · 🌿 Vegetarian friendly</span><br>
+    <span id="ui-footer-3">AI + AR: every dish is a 3D model you can zoom, place on your table and match to your taste.</span><br>
+    <small id="ui-footer-2">AR requires a compatible mobile device · Model size reflects actual portion</small>
+  </p>
+</footer>
+
+<script>
+/* ───────────── RESTAURANT & WHATSAPP CONFIGURATION ───────────── */
+const RESTAURANT_NAME = 'Pinocchio';
+// Replace with the restaurant's WhatsApp phone number (country code + number, digits only, no '+' or spaces)
+const WHATSAPP_NUMBER = '917019743880';
+// Fixed table number printed on every order so the kitchen staff never gets confused.
+// Set to '' to go back to guest-entered / ?table=5 table numbers.
+const FIXED_TABLE_NUMBER = 'A1';
+// Optional: Google Form / Google Apps Script Webhook URL to log Order events silently in the background
+const SERVICE_WEBHOOK_URL = '';
+
+const ASSETS_BASE = '3d-model';
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTEkmIGoRgD1rQNmDgmY3lvB7WBOg86iOHHrS0MJ6qQiReuDHsUyX3YV7KoWXxTbefyBUWPTHpvUOt3/pub?output=csv';
+
+// `scale` = default AR size of each dish (smaller number = smaller dish).
+const LOCAL_ASSETS = {
+  'pistachio-sauce-bigne-with-ricotta': { folder: 'Pistachio-Sauce-Bigne-with-Ricotta', file: 'Pistachio-Sauce-Bigne-with-Ricotta', scale: 0.75 },
+  'pinocchio-tiramisu':                 { folder: 'Pinocchio-Tiramisu',                 file: 'Pinocchio-Tiramisu',                 scale: 1 },
+  'cheesy-green-lasagne':               { folder: 'Cheesy-Green-Lasagne',               file: 'Cheesy-Green-Lasagne',               scale: 1 },
+  'fried-calamari':                     { folder: 'Fried-Calamari',                     file: 'Fried-Calamari',                     scale: 0.75 }
+};
+
+/* Fetch every dish model immediately (in parallel, before the menu sheet even loads) so they are
+   already in the browser cache when a 3D viewer asks for them. */
+Object.values(LOCAL_ASSETS).forEach(a => {
+  try { fetch(`${ASSETS_BASE}/${a.folder}/${a.file}.glb`, { cache: 'force-cache' }).catch(() => {}); } catch (e) {}
+});
+
+const EMOJI_MAP = {
+  'pistachio-sauce-bigne-with-ricotta': '🍮', 'pinocchio-tiramisu': '🍰', 'cheesy-green-lasagne': '🧀', 'fried-calamari': '🦑',
+};
+
+const I18N = {
+  en: { sub: 'Authentic Italian Cuisine', concept: 'See every dish on your table before you order', eyebrow: 'One Menu · Every Cuisine', badge: 'Interactive 3D & AR Preview', veg: 'veg', loading: 'Loading...',
+        search: 'Search dishes…', vegOnly: 'Veg only', empty: 'No dishes found', viewAR: 'View On Table', viewTable: 'View On Table',
+        launching: 'Loading…', launch: 'Launch AR', retry: 'Retry', pick: "chef's pick", isNew: 'new',
+        portion: 'Actual portion size', footer: 'Tap any dish to view in 3D · Prices in ₹ · 🌿 Vegetarian friendly',
+        footer2: 'AR requires a compatible mobile device · Model size reflects actual portion', arReady: '✦ AR Ready',
+        s1: 'Scan', s2: 'Place', s3: 'Experience', showcase: "Chef's Showcase", scroll: 'Scroll to explore',
+        hp1: 'Table preview at real size', hp2: 'Dish recommendations', hp3: 'Zoom into every dish',
+        footer3: 'AI + AR: every dish is a 3D model you can zoom, place on your table and match to your taste.',
+        fullMenu: 'Full Menu',
+        aiLPick: "AI highlight: today's chef pick, popular with guests who like similar dishes.",
+        aiLNew: 'AI highlight: new on the menu, suggested to guests who like to try something different.',
+        aiLStarter: 'AI pairing: a good opener that goes well with a main course.',
+        aiLMain: 'AI pairing: a filling main that goes well with a starter and a dessert.',
+        aiLDessert: 'AI pairing: a sweet finish that suits the end of your meal.',
+        aiLGen: 'AI match: recommended from guest taste patterns.',
+        aiSPick: 'Chef pick', aiSNew: 'New for you', aiSGen: 'Taste match',
+        zoomIn: 'Zoom in', zoomOut: 'Zoom out', arSwipe: 'Swipe or tap to switch dish on table',
+        add: 'Add', viewCart: 'View Order', orderSummary: 'Your Order', sendWA: 'Send Order via WhatsApp',
+        notePh: 'Special instructions (e.g., less spicy, no onion)…',
+        tableLbl: 'Table', tapReview: 'Tap to review & add notes',
+        spreadHero: 'Table Spread', spreadMain: 'Build a Whole-Table AR Spread',
+        spreadTitle: 'Whole-Table AR', spreadSub: 'Pick several dishes and see the full spread on your table at once — starter, main and dessert together.',
+        spreadFull: 'Starter + Main + Dessert', spreadMine: 'My Order', spreadClear: 'Clear',
+        spreadSelected: 'selected', spreadGo: 'View Full Spread on Table', spreadBuilding: 'Building your table…', spreadReady: 'Ready — Tap to Place on Table',
+        spreadAddAll: '+ Add all to order', spreadAdded: 'All spread dishes added to your order',
+        spreadMax: 'You can place up to 6 dishes at once', spreadNone: 'Pick at least one dish first', spreadNoCart: 'Your order is empty — add dishes first',
+        spreadNoDishes: 'No AR dishes available', spreadNote: 'Dishes are placed side by side at real size. Whole-table AR works best in Chrome on Android (WebXR) and on iPhone (AR Quick Look).',
+        spreadFail: 'Could not build the table spread. Please try again.', spreadUnsupported: 'Whole-table AR is not supported on this device/browser',
+        arOrder: 'Place Order', spreadChip: 'Full spread', spreadDishes: 'dishes', spreadInOrder: '✓ Spread in order', spreadSeeMine: '🍽️ See my order on the table', spreadReadyToast: 'Spread ready — tap to place it on your table' },
+  it: { sub: 'Autentica Cucina Italiana', badge: 'Anteprima Interattiva 3D & AR', veg: 'vegetariano', loading: 'Caricamento...',
+        search: 'Cerca piatti…', vegOnly: 'Solo veg', empty: 'Nessun piatto trovato', viewAR: 'Vedi sul tavolo', viewTable: 'Vedi sul tavolo',
+        launching: 'Caricamento…', launch: 'Avvia AR', retry: 'Riprova', pick: 'scelta dello chef', isNew: 'novità',
+        portion: 'Porzione reale', footer: 'Tocca un piatto per vederlo in 3D · Prezzi in ₹ · 🌿 Opzioni vegetariane',
+        footer2: 'La AR richiede un dispositivo mobile compatibile · Le dimensioni riflettono la porzione reale', arReady: '✦ AR Pronta',
+        s1: 'Scansiona', s2: 'Posiziona', s3: 'Vivi', showcase: 'Vetrina dello Chef', scroll: 'Scorri per esplorare',
+        hp1: 'Anteprima sul tavolo a grandezza reale', hp2: 'Consigli sui piatti', hp3: 'Zoom su ogni piatto',
+        footer3: 'AI + AR: ogni piatto è un modello 3D da ingrandire, posizionare sul tavolo e abbinare ai tuoi gusti.',
+        fullMenu: 'Menu Completo',
+        arNote: 'Posiziona un modello 3D in scala reale sul tuo tavolo prima di ordinare.',
+        arChip: 'Anteprima AR', ftAR: 'Posizionalo sul tavolo a grandezza reale', ftAI: 'Abbina i piatti ai tuoi gusti',
+        aiLPick: 'AI: scelta dello chef di oggi, apprezzata da chi ama piatti simili.',
+        aiLNew: 'AI: novità del menu, consigliata a chi ama provare cose nuove.',
+        aiLVeg: 'AI: opzione vegetariana, appare per prima con il filtro dieta.',
+        aiLStarter: 'AI: ottimo antipasto da abbinare a un secondo.',
+        aiLMain: 'AI: piatto sostanzioso che si abbina ad antipasto e dolce.',
+        aiLDessert: 'AI: un dolce finale adatto alla fine del pasto.',
+        aiLGen: 'AI: consigliato in base ai gusti degli ospiti.',
+        aiSPick: 'Scelta chef', aiSNew: 'Nuovo per te', aiSVeg: 'Veg', aiSGen: 'Per i tuoi gusti',
+        zoomIn: 'Ingrandisci', zoomOut: 'Riduci', arSwipe: 'Scorri o tocca per cambiare piatto',
+        add: 'Aggiungi', viewCart: 'Vedi Ordine', orderSummary: 'Il Tuo Ordine', sendWA: 'Invia Ordine su WhatsApp',
+        notePh: 'Note (es. poco piccante, senza cipolla)…',
+        tableLbl: 'Tavolo', tapReview: 'Tocca per rivedere e aggiungere note',
+        spreadHero: 'Tavola Completa', spreadMain: 'Crea una Tavola Completa in AR',
+        spreadTitle: 'AR a Tavola Intera', spreadSub: 'Scegli più piatti e vedi la tavola completa in una volta — antipasto, secondo e dolce insieme.',
+        spreadFull: 'Antipasto + Secondo + Dolce', spreadMine: 'Il Mio Ordine', spreadClear: 'Svuota',
+        spreadSelected: 'selezionati', spreadGo: 'Vedi la Tavola Completa', spreadBuilding: 'Preparo la tavola…', spreadReady: 'Pronto — Tocca per Posizionare',
+        spreadAddAll: '+ Aggiungi tutto all\'ordine', spreadAdded: 'Tutti i piatti aggiunti all\'ordine',
+        spreadMax: 'Puoi posizionare fino a 6 piatti', spreadNone: 'Scegli almeno un piatto', spreadNoCart: 'Il tuo ordine è vuoto',
+        spreadNoDishes: 'Nessun piatto AR disponibile', spreadNote: 'I piatti sono posizionati affiancati a grandezza reale. Funziona meglio con Chrome su Android (WebXR) e iPhone (AR Quick Look).',
+        spreadFail: 'Impossibile creare la tavola. Riprova.', spreadUnsupported: 'AR a tavola intera non supportata su questo dispositivo',
+        spreadChip: 'Tavola completa', spreadDishes: 'piatti', spreadInOrder: '✓ Tavola nell\'ordine', spreadSeeMine: '🍽️ Vedi il mio ordine sul tavolo', spreadReadyToast: 'Tavola pronta — tocca per posizionarla' },
+  kn: { sub: 'ಅಧಿಕೃತ ಇಟಾಲಿಯನ್ ಆಹಾರ', badge: '3D ಮತ್ತು AR ಮುನ್ನೋಟ', veg: 'ಸಸ್ಯಾಹಾರಿ', loading: 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...',
+        search: 'ಖಾದ್ಯಗಳನ್ನು ಹುಡುಕಿ…', vegOnly: 'ಸಸ್ಯಾಹಾರ ಮಾತ್ರ', empty: 'ಯಾವುದೇ ಖಾದ್ಯ ಸಿಗಲಿಲ್ಲ', viewAR: 'ಟೇಬಲ್ ಮೇಲೆ ನೋಡಿ', viewTable: 'ಟೇಬಲ್ ಮೇಲೆ ನೋಡಿ',
+        launching: 'ಲೋಡ್ ಆಗುತ್ತಿದೆ…', launch: 'AR ಆರಂಭಿಸಿ', retry: 'ಮರುಪ್ರಯತ್ನ', pick: 'ಬಾಣಸಿಗರ ಆಯ್ಕೆ', isNew: 'ಹೊಸ',
+        portion: 'ನಿಜವಾದ ಪ್ರಮಾಣ', footer: '3D ನೋಡಲು ಯಾವುದೇ ಖಾದ್ಯ ಟ್ಯಾಪ್ ಮಾಡಿ · ಬೆಲೆ ₹ ನಲ್ಲಿ · 🌿 ಸಸ್ಯಾಹಾರ ಲಭ್ಯ',
+        footer2: 'AR ಗೆ ಹೊಂದಾಣಿಕೆಯ ಮೊಬೈಲ್ ಸಾಧನ ಬೇಕು', arReady: '✦ AR ಸಿದ್ಧ',
+        s1: 'ಸ್ಕ್ಯಾನ್', s2: 'ಇರಿಸಿ', s3: 'ಅನುಭವಿಸಿ', showcase: 'ಬಾಣಸಿಗರ ಶೋಕೇಸ್', scroll: 'ಸ್ಕ್ರಾಲ್ ಮಾಡಿ',
+        fullMenu: 'ಪೂರ್ಣ ಮೆನು',
+        arSwipe: 'ಖಾದ್ಯ ಬದಲಾಯಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ', add: 'ಸೇರಿಸಿ', viewCart: 'ಆರ್ಡರ್ ನೋಡಿ', sendWA: 'WhatsApp ನಲ್ಲಿ ಆರ್ಡರ್ ಕಳುಹಿಸಿ',
+        tableLbl: 'ಟೇಬಲ್' },
+  ta: { sub: 'உண்மையான இத்தாலிய உணவு', badge: '3D மற்றும் AR மாதிரிக்காட்சி', veg: 'சைவம்', loading: 'ஏற்றப்படுகிறது...',
+        search: 'உணவுகளைத் தேடுக…', vegOnly: 'சைவம் மட்டும்', empty: 'உணவுகள் எதுவும் இல்லை', viewAR: 'மேசையில் காண்க', viewTable: 'மேசையில் காண்க',
+        launching: 'ஏற்றப்படுகிறது…', launch: 'AR தொடங்கு', retry: 'மீண்டும்', pick: 'சமையல்காரர் தேர்வு', isNew: 'புதியது',
+        portion: 'உண்மையான அளவு', footer: '3D-யில் காண எந்த உணவையும் தொடவும் · விலை ₹ · 🌿 சைவம் உண்டு',
+        footer2: 'AR-க்கு ஆதரவு உள்ள மொபைல் தேவை', arReady: '✦ AR தயார்',
+        s1: 'ஸ்கேன்', s2: 'வையுங்கள்', s3: 'அனுபவியுங்கள்', showcase: 'சமையல்காரர் சிறப்பு', scroll: 'ஸ்க்ரோல் செய்யவும்',
+        fullMenu: 'முழு மெனு',
+        arSwipe: 'உணவை மாற்ற தட்டவும்', add: 'சேர்', viewCart: 'ஆர்டரைப் பார்க்க', sendWA: 'WhatsApp மூலம் ஆர்டர் செய்',
+        tableLbl: 'டேபிள்' },
+  ml: { sub: 'ആധികാരിക ഇറ്റാലിയൻ വിഭവങ്ങൾ', badge: '3D & AR പ്രിവ്യൂ', veg: 'വെജ്', loading: 'ലോഡ് ചെയ്യുന്നു...',
+        search: 'വിഭവങ്ങൾ തിരയുക…', vegOnly: 'വെജ് മാത്രം', empty: 'വിഭവങ്ങളൊന്നും കണ്ടെത്തിയില്ല', viewAR: 'മേശയിൽ കാണുക', viewTable: 'മേശയിൽ കാണുക',
+        launching: 'ലോഡ് ചെയ്യുന്നു…', launch: 'AR തുടങ്ങുക', retry: 'വീണ്ടും', pick: 'ഷെഫിന്റെ തിരഞ്ഞെടുപ്പ്', isNew: 'പുതിയത്',
+        portion: 'യഥാർത്ഥ അളവ്', footer: '3D-യിൽ കാണാൻ വിഭവം ടാപ്പ് ചെയ്യുക · വില ₹ · 🌿 വെജ് ലഭ്യം',
+        footer2: 'AR-ന് അനുയോജ്യമായ മൊബൈൽ ആവശ്യമാണ്', arReady: '✦ AR തയ്യാർ',
+        s1: 'സ്കാൻ', s2: 'വയ്ക്കുക', s3: 'അനുഭവിക്കുക', showcase: 'ഷെഫിന്റെ ഷോകേസ്', scroll: 'സ്ക്രോൾ ചെയ്യുക',
+        fullMenu: 'പൂർണ്ണ മെനു',
+        arSwipe: 'വിഭവം മാറ്റാൻ ടാപ്പ് ചെയ്യുക', add: 'ചേർക്കുക', viewCart: 'ഓർഡർ കാണുക', sendWA: 'WhatsApp വഴി ഓർഡർ അയയ്ക്കുക',
+        tableLbl: 'ടേബിൾ' },
+  te: { sub: 'ప్రామాణిక ఇటాలియన్ వంటకాలు', badge: '3D & AR ప్రివ్యూ', veg: 'శాఖాహారం', loading: 'లోడ్ అవుతోంది..',
+        search: 'వంటకాలను వెతకండి…', vegOnly: 'శాఖాహారం మాత్రమే', empty: 'వంటకాలు కనబడలేదు', viewAR: 'టేబుల్‌పై చూడండి', viewTable: 'టేబుల్‌పై చూడండి',
+        launching: 'లోడ్ అవుతోంది…', launch: 'AR ప్రారంభించండి', retry: 'మళ్లీ', pick: 'చెఫ్ ఎంపిక', isNew: 'కొత్త',
+        portion: 'అసలు పరిమాణం', footer: '3Dలో చూడటానికి వంటకాన్ని నొక్కండి · ధరలు ₹ · 🌿 శాఖాహారం అందుబాటులో',
+        footer2: 'ARకు అనుకూల మొబైల్ అవసరం', arReady: '✦ AR సిద్ధం',
+        s1: 'స్కాన్', s2: 'ఉంచండి', s3: 'అనుభవించండి', showcase: 'చెఫ్ షోకేస్', scroll: 'స్క్రోల్ చేయండి',
+        fullMenu: 'పూర్తి మెనూ',
+        arSwipe: 'వంటకం మార్చడానికి ట్యాప్ చేయండి', add: 'జోడించు', viewCart: 'ఆర్డర్ చూడండి', sendWA: 'WhatsApp ద్వారా ఆర్డర్ పంపండి',
+        tableLbl: 'టేబుల్' }
+};
+
+const CAT_LABELS = {
+  all:           { en: 'All', it: 'Tutti', kn: 'ಎಲ್ಲಾ', ta: 'அனைத்தும்', ml: 'എല്ലാം', te: 'అన్నీ' },
+  starter:       { en: 'Starters', it: 'Antipasti', kn: 'ಸ್ಟಾರ್ಟರ್ಸ್', ta: 'ஸ்டார்ட்டர்ஸ்', ml: 'സ്റ്റാർട്ടേഴ്സ്', te: 'స్టార్టర్స్' },
+  'main-course': { en: 'Main Course', it: 'Portata Principale', kn: 'ಮುಖ್ಯ ಖಾದ್ಯ', ta: 'முக்கிய உணவு', ml: 'മെയിൻ കോഴ്സ്', te: 'మెయిన్ కోర్స్' },
+  dessert:       { en: 'Desserts', it: 'Dolci', kn: 'ಡೆಸರ್ಟ್', ta: 'இனிப்பு', ml: 'ഡെസേർട്ട്', te: 'డెజర్ట్స్' }
+};
+
+let allDishes = [], rawRows = [], activeCategory = 'all', currentLang = 'en', query = '', vegOnly = false;
+let currentModalDishId = null;
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+const T = () => ({ ...I18N.en, ...(I18N[currentLang] || {}) });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+const prettyName = n => String(n ?? '').replace(/-/g, ' ');
+const openNotes = new Set();   // dish ids whose note field is expanded in the order sheet
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+let toastTimer = null;
+function showToast(msg) {
+  const el = $('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ───────────── TABLE NUMBER (FROM ?table=5 OR SESSION) & CART STATE ───────────── */
+let tableNumber = '';
+// cart structure: { [dishId]: { qty: number, note: string } }
+let cart = {};
+let generalOrderNote = '';
+
+function initTableAndCart() {
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = (params.get('table') || params.get('t') || '').trim();
+  if (fromUrl) {
+    tableNumber = fromUrl;
+    try { sessionStorage.setItem('ld_pinocchio_table', tableNumber); } catch (e) {}
+  } else {
+    try { tableNumber = sessionStorage.getItem('ld_pinocchio_table') || ''; } catch (e) {}
+  }
+  try {
+    const savedCart = sessionStorage.getItem('ld_pinocchio_cart');
+    if (savedCart) cart = JSON.parse(savedCart) || {};
+    generalOrderNote = sessionStorage.getItem('ld_pinocchio_order_note') || '';
+  } catch (e) { cart = {}; }
+  if (FIXED_TABLE_NUMBER) {
+    tableNumber = FIXED_TABLE_NUMBER;
+    const inp = $('cart-table-input');
+    if (inp) { inp.readOnly = true; inp.style.cursor = 'default'; }
+  }
+  updateTablePill();
+}
+
+function saveCartState() {
+  try {
+    sessionStorage.setItem('ld_pinocchio_cart', JSON.stringify(cart));
+    sessionStorage.setItem('ld_pinocchio_order_note', generalOrderNote);
+    if (tableNumber) sessionStorage.setItem('ld_pinocchio_table', tableNumber);
+  } catch (e) {}
+}
+
+function updateTablePill() {
+  const t = T();
+  const pillText = $('table-pill-text');
+  if (pillText) {
+    pillText.textContent = tableNumber ? `${t.tableLbl} #${tableNumber}` : `${t.tableLbl}: Set #`;
+  }
+  const input = $('cart-table-input');
+  if (input && document.activeElement !== input) {
+    input.value = tableNumber;
+  }
+}
+
+$('table-pill').addEventListener('click', () => {
+  if (FIXED_TABLE_NUMBER) { showToast(`🍽️ Table ${FIXED_TABLE_NUMBER}`); return; }
+  const val = prompt('Enter your Table Number:', tableNumber || '');
+  if (val !== null) {
+    tableNumber = val.trim();
+    saveCartState();
+    updateTablePill();
+    if (tableNumber) showToast(`🍽️ Table #${tableNumber} set`);
+  }
+});
+
+function getDishQty(id) {
+  return cart[id]?.qty || 0;
+}
+
+function changeCartQty(id, delta, silent = false) {
+  const d = allDishes.find(x => x.id === id);
+  if (!d) return;
+  const cur = cart[id]?.qty || 0;
+  const next = Math.max(0, cur + delta);
+  if (next === 0) {
+    delete cart[id];
+  } else {
+    cart[id] = { qty: next, note: cart[id]?.note || '' };
+    if (!silent && cur === 0 && delta > 0) showToast(`✓ Added ${d.name}`);
+  }
+  saveCartState();
+  refreshAllCartControls();
+}
+
+function setDishNote(id, note) {
+  if (!cart[id]) return;
+  cart[id].note = note;
+  saveCartState();
+}
+
+function getCartTotals() {
+  let count = 0, total = 0;
+  const items = [];
+  for (const [id, entry] of Object.entries(cart)) {
+    if (!entry || entry.qty <= 0) continue;
+    const dish = allDishes.find(x => x.id === id);
+    if (!dish) continue;
+    count += entry.qty;
+    total += dish.price * entry.qty;
+    items.push({ dish, qty: entry.qty, note: entry.note || '' });
+  }
+  return { count, total, items };
+}
+
+function cartControlHTML(id) {
+  const t = T();
+  const q = getDishQty(id);
+  if (q <= 0) {
+    return `<button type="button" class="add-dish-btn" data-cart-add="${esc(id)}">+ ${esc(t.add)}</button>`;
+  }
+  return `
+    <div class="qty-stepper" role="group" aria-label="Quantity">
+      <button type="button" class="qty-btn" data-cart-dec="${esc(id)}" aria-label="Decrease quantity">−</button>
+      <span class="qty-val">${q}</span>
+      <button type="button" class="qty-btn" data-cart-inc="${esc(id)}" aria-label="Increase quantity">+</button>
+    </div>`;
+}
+
+function bindCartActionEvents(root = document) {
+  root.querySelectorAll('[data-cart-add]').forEach(btn => {
+    btn.onclick = e => { e.stopPropagation(); changeCartQty(btn.dataset.cartAdd, 1); };
+  });
+  root.querySelectorAll('[data-cart-inc]').forEach(btn => {
+    btn.onclick = e => { e.stopPropagation(); changeCartQty(btn.dataset.cartInc, 1); };
+  });
+  root.querySelectorAll('[data-cart-dec]').forEach(btn => {
+    btn.onclick = e => { e.stopPropagation(); changeCartQty(btn.dataset.cartDec, -1); };
+  });
+}
+
+function refreshAllCartControls() {
+  document.querySelectorAll('.card-cart-slot[data-dish-id]').forEach(slot => {
+    slot.innerHTML = cartControlHTML(slot.dataset.dishId);
+    bindCartActionEvents(slot);
+  });
+  const scDish = showList[showIdx];
+  const scWrap = $('sc-cart-ctl');
+  if (scWrap && scDish) {
+    scWrap.innerHTML = cartControlHTML(scDish.id);
+    bindCartActionEvents(scWrap);
+  }
+  const modWrap = $('modal-cart-ctl');
+  if (modWrap && currentModalDishId) {
+    modWrap.innerHTML = cartControlHTML(currentModalDishId);
+    bindCartActionEvents(modWrap);
+  }
+  const arBtn = $('ar-add-btn');
+  if (arBtn) {
+    if (spreadMode && spreadDishes.length) {
+      const missing = spreadDishes.filter(d => getDishQty(d.id) <= 0);
+      const totalAll = missing.reduce((s, d) => s + d.price, 0);
+      arBtn.textContent = missing.length
+        ? `+ Add all ${missing.length} · ₹${totalAll.toLocaleString('en-IN')}`
+        : T().spreadInOrder;
+    } else if (currentARDish) {
+      const q = getDishQty(currentARDish.id);
+      arBtn.textContent = q > 0 ? `✓ In Order (${q}) · +1` : `+ Add ${currentARDish.name} (₹${currentARDish.price})`;
+    }
+  }
+  const { count, total } = getCartTotals();
+  const fc = $('floating-cart');
+  if (count > 0) {
+    fc.classList.add('visible');
+    document.body.classList.add('has-cart');
+    $('fc-count').textContent = count;
+    $('fc-total').textContent = `₹${total.toLocaleString('en-IN')}`;
+    const tblPart = tableNumber ? `${T().tableLbl} #${tableNumber} · ` : '';
+    $('fc-sub').textContent = `${tblPart}${T().tapReview}`;
+  } else {
+    fc.classList.remove('visible');
+    document.body.classList.remove('has-cart');
+  }
+  if ($('cart-modal').classList.contains('open')) {
+    renderCartModalList();
+  }
+  updateAROrderBar();
+  scheduleCartPrep();
+}
+
+/* Order bar shown inside the AR screen */
+function updateAROrderBar() {
+  const bar = $('ar-order-bar');
+  if (!bar) return;
+  const { count, total } = getCartTotals();
+  let c = count, tt = total;
+  if (spreadMode) spreadDishes.forEach(d => { if (getDishQty(d.id) <= 0) { c += 1; tt += d.price; } });
+  if (c <= 0) { bar.classList.remove('show'); return; }
+  bar.classList.add('show');
+  $('ar-order-count').textContent = `${c} ${c > 1 ? 'items' : 'item'}`;
+  $('ar-order-total').textContent = `₹${tt.toLocaleString('en-IN')}`;
+  $('ar-order-btn').textContent = `${T().arOrder} →`;
+}
+
+function renderCartModalList() {
+  const { items, total, count } = getCartTotals();
+  const listEl = $('cart-items-list');
+  const t = T();
+  if (document.activeElement !== $('cart-table-input')) $('cart-table-input').value = tableNumber;
+  $('cart-general-note').value = generalOrderNote;
+  const money = `₹${total.toLocaleString('en-IN')}`;
+  $('cart-grand-total').textContent = money;
+  $('cart-sticky-total').textContent = money;
+  $('cs-items-val').textContent = count;
+  $('cart-head-count').textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+  $('cart-modal').classList.toggle('cart-empty-state', !items.length);
+
+  if (!items.length) {
+    listEl.innerHTML = `<div class="cart-empty"><div class="cart-empty-ico">🍽️</div><p>Your table is waiting — add dishes from the menu to begin.</p></div>`;
+    updateCartPlaceBtn();
+    return;
+  }
+
+  listEl.innerHTML = items.map(({ dish, qty, note }) => {
+    const open = !!note || openNotes.has(dish.id);
+    const thumb = dish.posterPath
+      ? `<img src="${esc(dish.posterPath)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${dish.emoji}</span>`
+      : `<span>${dish.emoji}</span>`;
+    return `
+    <div class="cart-item-card${open ? ' note-open' : ''}" data-ci-id="${esc(dish.id)}">
+      <div class="ci-thumb">${thumb}</div>
+      <div class="ci-main">
+        <div class="ci-name">${esc(prettyName(dish.name))}</div>
+        <div class="ci-unit">₹${dish.price.toLocaleString('en-IN')} each</div>
+        ${open ? '' : `<button type="button" class="ci-note-toggle" data-note-toggle="${esc(dish.id)}">✎ Add note</button>`}
+      </div>
+      <div class="ci-side">
+        <div class="ci-line-total">₹${(dish.price * qty).toLocaleString('en-IN')}</div>
+        <div class="cart-ctl-wrap">${cartControlHTML(dish.id)}</div>
+      </div>
+      <input type="text" class="ci-note" data-note-id="${esc(dish.id)}" value="${esc(note)}" placeholder="${esc(t.notePh)}" />
+    </div>`;
+  }).join('');
+
+  bindCartActionEvents(listEl);
+  listEl.querySelectorAll('[data-note-toggle]').forEach(b => b.addEventListener('click', () => {
+    const id = b.dataset.noteToggle;
+    openNotes.add(id);
+    renderCartModalList();
+    const inp = listEl.querySelector(`[data-note-id="${CSS.escape(id)}"]`);
+    if (inp) inp.focus();
+  }));
+  listEl.querySelectorAll('[data-note-id]').forEach(inp => {
+    inp.addEventListener('input', e => setDishNote(inp.dataset.noteId, e.target.value));
+  });
+  updateCartPlaceBtn();
+}
+
+function openCartModal() {
+  renderCartModalList();
+  $('cart-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeCartModal() {
+  $('cart-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+$('fc-open-btn').addEventListener('click', e => { e.stopPropagation(); openCartModal(); });
+$('floating-cart').addEventListener('click', openCartModal);
+$('cart-close').addEventListener('click', closeCartModal);
+$('cart-modal').addEventListener('click', e => { if (e.target === $('cart-modal')) closeCartModal(); });
+
+$('cart-table-input').addEventListener('input', e => {
+  if (FIXED_TABLE_NUMBER) { e.target.value = FIXED_TABLE_NUMBER; return; }
+  tableNumber = e.target.value.trim();
+  saveCartState();
+  updateTablePill();
+});
+$('cart-general-note').addEventListener('input', e => {
+  generalOrderNote = e.target.value;
+  saveCartState();
+});
+$('cart-clear-btn').addEventListener('click', () => {
+  if (!Object.keys(cart).length) return;
+  cart = {};
+  generalOrderNote = '';
+  saveCartState();
+  refreshAllCartControls();
+  closeCartModal();
+  showToast('🗑️ Cart cleared');
+});
+
+/* ───────────── WHATSAPP ORDER ───────────── */
+function ensureTableNumberPrompt() {
+  if (tableNumber) return tableNumber;
+  const entered = prompt('Please enter your Table Number so our staff can serve you:', '');
+  if (entered !== null && entered.trim()) {
+    tableNumber = entered.trim();
+    saveCartState();
+    updateTablePill();
+  }
+  return tableNumber || 'Walk-in / Not specified';
+}
+
+function postServiceWebhook(payload) {
+  if (!SERVICE_WEBHOOK_URL) return;
+  try {
+    fetch(SERVICE_WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurant: RESTAURANT_NAME, timestamp: new Date().toISOString(), ...payload })
+    });
+  } catch (e) {}
+}
+
+function openWhatsAppMessage(text) {
+  const cleanPhone = WHATSAPP_NUMBER.replace(/[^\d]/g, '');
+  const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function sendOrderToKitchen() {
+  const { items, total, count } = getCartTotals();
+  if (!items.length) {
+    showToast('Please add at least one dish first');
+    return false;
+  }
+  const tbl = ensureTableNumberPrompt();
+  const lines = [
+    `🍽️ *NEW TABLE ORDER — ${RESTAURANT_NAME.toUpperCase()}*`,
+    `📍 *Table:* ${tbl}`,
+    `────────────────────`
+  ];
+  items.forEach(({ dish, qty, note }, i) => {
+    const sub = dish.price * qty;
+    lines.push(`${i + 1}. *${dish.name}* × ${qty} — ₹${sub.toLocaleString('en-IN')}`);
+    if (note && note.trim()) {
+      lines.push(`   _↳ Note: ${note.trim()}_`);
+    }
+  });
+  lines.push(`────────────────────`);
+  if (generalOrderNote && generalOrderNote.trim()) {
+    lines.push(`📝 *Order Note:* ${generalOrderNote.trim()}`);
+  }
+  lines.push(`🧾 *Total (${count} items): ₹${total.toLocaleString('en-IN')}*`);
+
+  postServiceWebhook({ type: 'ORDER', table: tbl, total, items: items.map(x => ({ id: x.dish.id, name: x.dish.name, qty: x.qty, note: x.note })), generalOrderNote });
+  openWhatsAppMessage(lines.join('\n'));
+  return true;
+}
+$('wa-order-btn').addEventListener('click', () => sendOrderToKitchen());
+
+function aiLong(d) {
+  const t = T();
+  if (d.dotd) return t.aiLPick;
+  if (d.isNew) return t.aiLNew;
+  if (d.veg) return t.aiLVeg;
+  if (d.category === 'starter') return t.aiLStarter;
+  if (d.category === 'main-course') return t.aiLMain;
+  if (d.category === 'dessert') return t.aiLDessert;
+  return t.aiLGen;
+}
+function aiShort(d) {
+  const t = T();
+  return d.dotd ? t.aiSPick : d.isNew ? t.aiSNew : d.veg ? t.aiSVeg : t.aiSGen;
+}
+
+function normalizeKey(str) { return (str || '').toLowerCase().replace(/\s+/g, '-').trim(); }
+
+function getLocalAssets(dishName) {
+  const entry = LOCAL_ASSETS[normalizeKey(dishName)];
+  if (!entry) return { posterPath: '', glbPath: '', usdzPath: '', scale: 0.25 };
+  const base = `${ASSETS_BASE}/${entry.folder}/${entry.file}`;
+  return { posterPath: `${base}.png`, glbPath: `${base}.glb`, usdzPath: `${base}.usdz`, scale: entry.scale };
+}
+
+function rowToDish(row, idx) {
+  const truthy = v => ['true', 'yes', '1'].includes((v || '').toLowerCase());
+  const lang = currentLang === 'en' ? '' : `_${currentLang}`;
+  const local = getLocalAssets(row['name']);
+  return {
+    id: row['id'] || `dish-${idx}`,
+    name: row[`name${lang}`] || row['name'] || '',
+    category: (row['category'] || 'other').toLowerCase().trim().replace(/\s+/g, '-'),
+    desc: row[`description${lang}`] || row['description'] || '',
+    price: parseInt(row['price'] || '0', 10) || 0,
+    veg: truthy(row['veg']), available: truthy(row['available']), isNew: truthy(row['new']), dotd: truthy(row['dotd']),
+    glbPath: local.glbPath, usdzPath: local.usdzPath, posterPath: local.posterPath, scale: local.scale,
+    emoji: EMOJI_MAP[normalizeKey(row['name'])] || '🍽️'
+  };
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = splitLine(lines[0]).map(h => h.trim().toLowerCase());
+  return lines.slice(1).map(line => {
+    const vals = splitLine(line), obj = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim(); });
+    return obj;
+  });
+}
+function splitLine(line) {
+  const result = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"' && !inQ) { inQ = true; continue; }
+    if (ch === '"' && inQ)  { if (line[i+1] === '"') { cur += '"'; i++; } else { inQ = false; } continue; }
+    if (ch === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  result.push(cur); return result;
+}
+
+function tagHTML(d) {
+  const t = T();
+  return [
+    d.veg   ? `<span class="tag tag-veg">🌿 ${esc(t.veg)}</span>` : '',
+    d.isNew ? `<span class="tag tag-new">✦ ${esc(t.isNew)}</span>` : '',
+    d.dotd  ? `<span class="tag tag-dotd">★ ${esc(t.pick)}</span>` : '',
+  ].join('');
+}
+function catLabel(cat) {
+  const map = CAT_LABELS[cat];
+  return map ? (map[currentLang] || map.en) : (cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, ' '));
+}
+
+/* Tabs now only jump the 3D showcase; the Full Menu list below always shows every category */
+function renderTabs() {
+  const cats = ['all', 'starter', 'main-course', 'dessert'];
+  const wrap = $('tabs-inner');
+  wrap.innerHTML = cats.map(c => `<button class="tab-btn${c === activeCategory ? ' active' : ''}" data-cat="${c}">${esc(catLabel(c))}</button>`).join('');
+  wrap.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => { activeCategory = btn.dataset.cat; renderTabs(); jumpToCategory(activeCategory); }));
+}
+
+const SVG_CUBE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`;
+const SVG_TABLE = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/><path d="M3 3v6M21 3v6"/></svg>`;
+
+function cardHTML(d) {
+  const t = T();
+  const thumb = d.posterPath
+    ? `<img src="${esc(d.posterPath)}" alt="${esc(d.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${d.emoji}</span>`
+    : `<span>${d.emoji}</span>`;
+  return `
+    <div class="card-cell">
+      <article class="menu-card${d.available ? '' : ' unavailable'}" data-id="${esc(d.id)}" role="button" tabindex="0" aria-label="${esc(d.name)}">
+        <div class="card-thumb">
+          ${thumb}
+          ${d.glbPath ? `<span class="ar-pill">${SVG_CUBE}AR</span>` : ''}
+        </div>
+        <div class="card-body">
+          <h3 class="dish-name">${esc(d.name)}</h3>
+          <div class="tags-row">${tagHTML(d)}</div>
+          <p class="dish-desc">${esc(d.desc)}</p>
+          <div class="tech-line" style="display:none;">
+            ${d.glbPath ? `<span class="tech-chip"><b>AR</b>${esc(t.arChip)}</span>` : ''}
+            <span class="tech-chip"><b>AI</b>${esc(aiShort(d))}</span>
+          </div>
+          <div class="card-footer">
+            <div class="dish-price"><span class="price-sym">₹</span>${d.price.toLocaleString('en-IN')}</div>
+            <div class="card-actions">
+              ${d.glbPath ? `<button class="ar-btn" data-id="${esc(d.id)}" type="button">${SVG_CUBE}${esc(t.viewTable)}</button>` : ''}
+              <div class="cart-ctl-wrap card-cart-slot" data-dish-id="${esc(d.id)}">${cartControlHTML(d.id)}</div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>`;
+}
+
+function bindCardTilt(card) {
+  if (!canHover || reduceMotion) return;
+  card.addEventListener('pointermove', e => {
+    const b = card.getBoundingClientRect();
+    const x = (e.clientX - b.left) / b.width, y = (e.clientY - b.top) / b.height;
+    card.style.setProperty('--hry', ((x - .5) * 10).toFixed(2) + 'deg');
+    card.style.setProperty('--hrx', ((.5 - y) * 8).toFixed(2) + 'deg');
+    card.style.setProperty('--gx', (x * 100).toFixed(1) + '%');
+    card.style.setProperty('--gy', (y * 100).toFixed(1) + '%');
+  });
+  card.addEventListener('pointerleave', () => { card.style.setProperty('--hry', '0deg'); card.style.setProperty('--hrx', '0deg'); });
+}
+
+/* FULL MENU LIST — always every category, in Starter → Main → Dessert → Other order.
+   Only the search box and the Veg-only toggle narrow it down. */
+function renderItems() {
+  const q = query.trim().toLowerCase();
+  const filtered = allDishes.filter(d =>
+    (!vegOnly || d.veg) &&
+    (!q || d.name.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q))
+  );
+  const container = $('items-container');
+  if (!filtered.length) { container.innerHTML = `<div class="empty">${esc(T().empty)}</div>`; return; }
+
+  const grouped = {};
+  filtered.slice().sort((a, b) => catRank(a.category) - catRank(b.category))
+    .forEach(d => { (grouped[d.category] = grouped[d.category] || []).push(d); });
+  container.innerHTML = Object.entries(grouped).map(([cat, items]) =>
+    `<h2 class="section-label">${esc(catLabel(cat))}<small>${items.length}</small></h2><div class="items-grid">${items.map(cardHTML).join('')}</div>`
+  ).join('');
+
+  container.querySelectorAll('.menu-card').forEach(card => {
+    card.addEventListener('click', () => openModal(card.dataset.id));
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(card.dataset.id); } });
+    bindCardTilt(card);
+  });
+  container.querySelectorAll('.ar-btn').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    launchDirectAR(btn.dataset.id, btn);
+  }));
+  bindCartActionEvents(container);
+  update();
+}
+
+/* ───────────── DIRECT AR LAUNCHER + DISH CAROUSEL HUD ───────────── */
+const globalAR = $('global-ar-viewer');
+let currentARDish = null;
+let lastCapturedDataUrl = '';
+
+const AR_SHADOW_INTENSITY = 1;
+function applyARShadow() {
+  try {
+    if (globalAR.shadowIntensity !== AR_SHADOW_INTENSITY) globalAR.shadowIntensity = AR_SHADOW_INTENSITY;
+  } catch (e) {}
+}
+
+function setBackgroundRender(on) {
+  document.querySelectorAll('#show-stack model-viewer, #modal-viewer-wrap model-viewer').forEach(mv => {
+    mv.style.display = on ? '' : 'none';
+  });
+}
+
+function preloadModels() {
+  const run = async () => {
+    // Warm up the whole-table engine in the background so the spread builds fast later
+    loadThreeLib()
+      .then(() => Promise.all(getARDishes().map(d => getGLTFScene(d.glbPath))))
+      .catch(() => {});
+    if (isIOS) {
+      // GLBs are already fetched at startup; on iPhone also pre-fetch the USDZ used by AR Quick Look
+      for (const d of getARDishes()) {
+        if (d.usdzPath) { try { await fetch(d.usdzPath); } catch (e) {} }
+      }
+    }
+    const first = getARDishes()[0];
+    if (first) warmAR(first);
+  };
+  (window.requestIdleCallback || (f => setTimeout(f, 1500)))(run);
+}
+
+function warmAR(d) {
+  if (isIOS || !d || !d.glbPath) return;
+  if (spreadMode) return; // never swap the viewer's model while a table spread is loaded
+  if (globalAR.getAttribute('src') !== d.glbPath) globalAR.setAttribute('src', d.glbPath);
+}
+
+/* Wait until the global viewer has `url` loaded (works for dish GLBs and for the combined spread blob). */
+function ensureARSrc(url) {
+  return new Promise((resolve, reject) => {
+    if (globalAR.getAttribute('src') === url && globalAR.loaded) return resolve();
+    const cleanup = () => { globalAR.removeEventListener('load', ok); globalAR.removeEventListener('error', bad); };
+    const ok = () => { cleanup(); resolve(); };
+    const bad = () => { cleanup(); reject(new Error('model load failed')); };
+    globalAR.addEventListener('load', ok);
+    globalAR.addEventListener('error', bad);
+    if (globalAR.getAttribute('src') !== url) globalAR.setAttribute('src', url);
+  });
+}
+function ensureARModel(d) { return ensureARSrc(d.glbPath); }
+
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest && e.target.closest('.ar-btn[data-id], #sc-ar');
+  if (!b) return;
+  const d = b.id === 'sc-ar' ? showList[showIdx] : allDishes.find(x => x.id === b.dataset.id);
+  warmAR(d);
+}, { passive: true });
+
+function applyARSize(d) {
+  if (!d) return;
+  const rawScale = Number(d.scale ?? 0.25);
+  const s = (Number.isFinite(rawScale) && rawScale > 0 ? clamp(rawScale, 0.001, 10) : 0.25).toFixed(4);
+  globalAR.setAttribute('scale', `${s} ${s} ${s}`);
+  globalAR.setAttribute('ar-placement', 'floor');
+  globalAR.setAttribute('ar-scale', 'fixed');
+  globalAR.setAttribute('shadow-intensity', '1');
+  globalAR.setAttribute('shadow-softness', '0.9');
+}
+
+function getARDishes() {
+  return allDishes.filter(d => d.glbPath && d.available);
+}
+
+function renderARCarousel() {
+  const wrap = $('ar-carousel');
+  if (!wrap) return;
+  const arDishes = getARDishes();
+  wrap.innerHTML = arDishes.map(d => {
+    const isActive = currentARDish && currentARDish.id === d.id;
+    const thumb = d.posterPath
+      ? `<img src="${esc(d.posterPath)}" alt="${esc(d.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${d.emoji}</span>`
+      : `<span>${d.emoji}</span>`;
+    return `
+      <button type="button" class="ar-carousel-item${isActive ? ' active' : ''}" data-ar-id="${esc(d.id)}" role="option" aria-selected="${isActive}">
+        <span class="ar-c-thumb">${thumb}</span>
+        <span class="ar-c-meta">
+          <span class="ar-c-name">${esc(d.name)}</span>
+          <span class="ar-c-price">₹${d.price.toLocaleString('en-IN')}</span>
+        </span>
+      </button>`;
+  }).join('');
+
+  wrap.querySelectorAll('.ar-carousel-item').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      switchARDish(btn.dataset.arId);
+    });
+  });
+  scrollActiveCarouselItemIntoView();
+  refreshAllCartControls();
+}
+
+function scrollActiveCarouselItemIntoView() {
+  const wrap = $('ar-carousel');
+  if (!wrap) return;
+  const activeEl = wrap.querySelector('.ar-carousel-item.active');
+  if (activeEl) activeEl.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
+}
+
+function switchARDish(id) {
+  if (spreadMode) return;
+  const d = allDishes.find(x => x.id === id);
+  if (!d || !d.glbPath) return;
+  currentARDish = d;
+
+  applyARSize(d);
+  if (d.usdzPath) globalAR.setAttribute('ios-src', d.usdzPath);
+  if (globalAR.getAttribute('src') !== d.glbPath) globalAR.setAttribute('src', d.glbPath);
+
+  const wrap = $('ar-carousel');
+  if (wrap) {
+    wrap.querySelectorAll('.ar-carousel-item').forEach(btn => {
+      const active = btn.dataset.arId === d.id;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', String(active));
+    });
+    scrollActiveCarouselItemIntoView();
+  }
+  refreshAllCartControls();
+}
+
+function stepARDish(dir) {
+  if (spreadMode) return;
+  const list = getARDishes();
+  if (!list.length) return;
+  const idx = list.findIndex(x => currentARDish && x.id === currentARDish.id);
+  const nextIdx = (idx + dir + list.length) % list.length;
+  switchARDish(list[nextIdx].id);
+}
+
+$('ar-side-prev').addEventListener('click', e => { e.stopPropagation(); stepARDish(-1); });
+$('ar-side-next').addEventListener('click', e => { e.stopPropagation(); stepARDish(1); });
+$('ar-add-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  if (spreadMode && spreadDishes.length) {
+    let added = 0;
+    spreadDishes.forEach(d => { if (getDishQty(d.id) <= 0) { changeCartQty(d.id, 1, true); added++; } });
+    if (added) showToast(`✓ ${T().spreadAdded}`);
+    return;
+  }
+  if (currentARDish) changeCartQty(currentARDish.id, 1);
+});
+
+async function exitARSession() {
+  try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (e) {}
+  // Properly end the WebXR session via model-viewer's (hidden) exit button
+  try { globalAR.querySelector('[slot="exit-webxr-ar-button"]')?.click(); } catch (e) {}
+  globalAR.classList.remove('ar-active');
+}
+
+/* Place Order from inside AR: add the spread dishes, leave AR, open the order sheet */
+$('ar-order-btn').addEventListener('click', async e => {
+  e.stopPropagation();
+  if (spreadMode) spreadDishes.forEach(d => { if (getDishQty(d.id) <= 0) changeCartQty(d.id, 1, true); });
+  if (!getCartTotals().count) return;
+  // Close the AR camera first, then open WhatsApp in the same tap so the browser allows it
+  try { globalAR.querySelector('[slot="exit-webxr-ar-button"]')?.click(); } catch (err) {}
+  globalAR.classList.remove('ar-active');
+  const sent = sendOrderToKitchen();
+  if (sent) showToast(`✓ Order sent to kitchen · Table ${tableNumber || ''}`.trim());
+  try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (err) {}
+});
+
+$('ar-close-btn').addEventListener('click', exitARSession);
+
+$('ar-to-3d-btn').addEventListener('click', async () => {
+  await exitARSession();
+  if (spreadMode) { openSpreadModal(); return; }
+  if (currentARDish) openModal(currentARDish.id, true);
+});
+
+$('ar-shutter-btn').addEventListener('click', async () => {
+  const flash = $('ar-flash');
+  flash.classList.add('active');
+  setTimeout(() => flash.classList.remove('active'), 220);
+  try {
+    const blob = await globalAR.toBlob({ idealAspect: true });
+    if (lastCapturedDataUrl) URL.revokeObjectURL(lastCapturedDataUrl);
+    lastCapturedDataUrl = URL.createObjectURL(blob);
+    const thumb = $('ar-media-thumb');
+    thumb.src = lastCapturedDataUrl;
+    thumb.style.display = 'block';
+    $('ar-gallery-icon').style.display = 'none';
+    $('capture-preview-img').src = lastCapturedDataUrl;
+    $('capture-download-btn').href = lastCapturedDataUrl;
+    const baseName = spreadMode ? 'Table-Spread' : (currentARDish?.name || 'Pinocchio-Dish');
+    $('capture-download-btn').download = `${baseName.replace(/\s+/g, '-')}-AR.png`;
+  } catch (err) {
+    console.warn('Snapshot capture error:', err);
+  }
+});
+
+$('ar-gallery-btn').addEventListener('click', () => {
+  if (!lastCapturedDataUrl) {
+    $('ar-shutter-btn').click();
+    setTimeout(() => { if (lastCapturedDataUrl) $('capture-modal').classList.add('open'); }, 350);
+  } else {
+    $('capture-modal').classList.add('open');
+  }
+});
+
+$('capture-close-btn').addEventListener('click', () => $('capture-modal').classList.remove('open'));
+$('capture-modal').addEventListener('click', e => {
+  if (e.target === $('capture-modal')) $('capture-modal').classList.remove('open');
+});
+
+globalAR.addEventListener('ar-status', e => {
+  const st = e.detail.status;
+  if (st === 'session-started') {
+    globalAR.classList.add('ar-active');
+    setBackgroundRender(false);
+    applyARShadow();
+    if (spreadMode) {
+      updateSpreadHUD();
+    } else {
+      applyARSize(currentARDish);
+      renderARCarousel();
+    }
+  } else if (st === 'object-placed') {
+    globalAR.classList.add('ar-active');
+  } else if (st === 'not-presenting' || st === 'failed') {
+    globalAR.classList.remove('ar-active');
+    setBackgroundRender(true);
+  }
+});
+
+/* Switch the global viewer back to normal single-dish behaviour */
+function resetSingleARMode() {
+  spreadMode = false;
+  globalAR.classList.remove('spread-mode');
+  globalAR.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+}
+
+function launchDirectAR(id, triggerBtn) {
+  const d = allDishes.find(x => x.id === id);
+  if (!d || !d.glbPath) return;
+  currentARDish = d;
+  resetSingleARMode();
+  const t = T();
+
+  if (isIOS && d.usdzPath) {
+    const a = document.createElement('a');
+    a.setAttribute('rel', 'ar');
+    const absUsdz = new URL(d.usdzPath, location.href).href;
+    a.setAttribute('href', `${absUsdz}#allowsContentScaling=0&canonicalWebPageURL=${encodeURIComponent(location.href)}`);
+    const img = document.createElement('img');
+    a.appendChild(img);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.innerHTML = `<span class="btn-spin"></span>${esc(t.launching)}`;
+  }
+
+  renderARCarousel();
+  applyARShadow();
+
+  applyARSize(d);
+  if (d.usdzPath) globalAR.setAttribute('ios-src', d.usdzPath);
+
+  const restoreBtn = () => {
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.innerHTML = `${SVG_CUBE}${esc(T().viewTable)}`;
+    }
+  };
+
+  let finished = false;
+  const fallback = () => {
+    if (finished) return;
+    finished = true;
+    restoreBtn();
+    openModal(d.id, true);
+  };
+  const timer = setTimeout(fallback, 12000);
+
+  ensureARModel(d).then(() => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timer);
+    restoreBtn();
+    try {
+      globalAR.activateAR();
+    } catch (err) {
+      console.warn('Direct AR failed, opening 3D modal instead:', err);
+      openModal(d.id, true);
+    }
+  }).catch(err => {
+    console.warn('Could not prepare AR model:', err);
+    clearTimeout(timer);
+    fallback();
+  });
+}
+
+/* ───────────── WHOLE-TABLE AR (TABLE SPREAD) ─────────────
+   model-viewer can only show one model at a time, so we merge the selected
+   dishes into ONE combined GLB in the browser (three.js GLTFLoader + GLTFExporter,
+   loaded lazily only when a guest opens this feature), lay the dishes out side by
+   side at real size, and hand that single model to AR (WebXR on Android, and
+   AR Quick Look on iPhone — model-viewer converts the GLB to USDZ itself). */
+const SPREAD_MAX = 6;
+let spreadMode = false;          // true while the global viewer holds a combined spread
+let spreadDishes = [];           // dishes in the current spread (layout order)
+let spreadSel = [];              // dish ids currently ticked in the picker
+let spreadBlobUrl = '';          // object URL of the combined GLB
+let spreadBuiltKey = '';         // which selection the blob was built for
+let spreadBusy = false;
+const gltfSceneCache = {};
+let threeLibPromise = null;
+
+function loadThreeLib() {
+  if (threeLibPromise) return threeLibPromise;
+  threeLibPromise = (async () => {
+    const [THREE, gl, ex, dr, mo] = await Promise.all([
+      import('three'),
+      import('three/addons/loaders/GLTFLoader.js'),
+      import('three/addons/exporters/GLTFExporter.js'),
+      import('three/addons/loaders/DRACOLoader.js'),
+      import('three/addons/libs/meshopt_decoder.module.js')
+    ]);
+    const draco = new dr.DRACOLoader();
+    draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    const loader = new gl.GLTFLoader();
+    loader.setDRACOLoader(draco);
+    loader.setMeshoptDecoder(mo.MeshoptDecoder);
+    return { THREE, loader, GLTFExporter: ex.GLTFExporter };
+  })().catch(err => { threeLibPromise = null; throw err; });
+  return threeLibPromise;
+}
+
+async function getGLTFScene(path) {
+  if (gltfSceneCache[path]) return gltfSceneCache[path];
+  const { loader } = await loadThreeLib();
+  const gltf = await loader.loadAsync(path);
+  gltfSceneCache[path] = gltf.scene;
+  return gltf.scene;
+}
+
+/* Combine the dishes into one GLB. Each dish is scaled by its own `scale`
+   (so portions keep their real-world size), grounded on y = 0 and arranged:
+   1 dish = centre · 2 dishes = side by side · 3+ dishes = a ring around the table centre. */
+async function buildSpreadGLB(dishes) {
+  const { THREE, GLTFExporter } = await loadThreeLib();
+  const root = new THREE.Group();
+  root.name = 'TableSpread';
+  const slots = [];
+
+  for (const d of dishes) {
+    const src = await getGLTFScene(d.glbPath);
+    const obj = src.clone(true);
+    const raw = Number(d.scale);
+    const s = Number.isFinite(raw) && raw > 0 ? raw : 0.25;
+    const holder = new THREE.Group();
+    holder.add(obj);
+    holder.scale.setScalar(s);
+    holder.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(holder);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    holder.position.set(-center.x, -box.min.y, -center.z);   // centre on x/z, sit on the table (y = 0)
+    const slot = new THREE.Group();
+    slot.add(holder);
+    slots.push({ slot, footprint: Math.max(size.x, size.z, 0.01) });
+  }
+
+  const maxW = Math.max(...slots.map(s => s.footprint));
+  const GAP = 0.003;                            // 0.3 cm between dishes → plates sit almost touching
+  const pitch = maxW + GAP;                     // centre-to-centre distance for the ring layout
+  const n = slots.length;
+  if (n === 2) {
+    // use each dish's real width so the two plates nearly touch
+    const d = (slots[0].footprint + slots[1].footprint) / 2 + GAP;
+    slots[0].slot.position.set(-d / 2, 0, 0);
+    slots[1].slot.position.set(d / 2, 0, 0);
+  } else if (n >= 3) {
+    const r = pitch / (2 * Math.sin(Math.PI / n));
+    slots.forEach((it, i) => {
+      const th = Math.PI + (i * 2 * Math.PI) / n;
+      it.slot.position.set(r * Math.cos(th), 0, r * Math.sin(th));
+    });
+  }
+  slots.forEach(it => root.add(it.slot));
+  root.updateMatrixWorld(true);
+
+  const exporter = new GLTFExporter();
+  const buffer = await new Promise((resolve, reject) =>
+    exporter.parse(root, resolve, reject, { binary: true, onlyVisible: true, maxTextureSize: 1024 })
+  );
+  return URL.createObjectURL(new Blob([buffer], { type: 'model/gltf-binary' }));
+}
+
+const spreadKey = ids => ids.join('|');
+
+function selectedSpreadDishes() {
+  return spreadSel
+    .map(id => allDishes.find(x => x.id === id))
+    .filter(d => d && d.glbPath && d.available)
+    .sort((a, b) => catRank(a.category) - catRank(b.category));   // starter → main → dessert
+}
+
+function openSpreadModal(preselect) {
+  const ar = getARDishes();
+  if (!ar.length) { showToast(T().spreadNoDishes); return; }
+  if (Array.isArray(preselect)) spreadSel = preselect.filter(id => ar.some(d => d.id === id)).slice(0, SPREAD_MAX);
+  else spreadSel = spreadSel.filter(id => ar.some(d => d.id === id));
+  if (!spreadSel.length && !Array.isArray(preselect)) presetBalanced(true);
+  renderSpreadModal();
+  $('spread-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSpreadModal() {
+  $('spread-modal').classList.remove('open');
+  if (!$('modal-overlay').classList.contains('open') && !$('cart-modal').classList.contains('open')) document.body.style.overflow = '';
+}
+
+function presetBalanced(silent) {
+  const ar = getARDishes();
+  const picked = [];
+  CAT_ORDER.forEach(cat => {
+    const d = ar.find(x => x.category === cat);
+    if (d) picked.push(d.id);
+  });
+  if (picked.length < 3) {
+    ar.forEach(d => { if (picked.length < 3 && !picked.includes(d.id)) picked.push(d.id); });
+  }
+  spreadSel = picked.slice(0, SPREAD_MAX);
+  if (!silent) renderSpreadModal();
+}
+
+function presetFromCart() {
+  const ar = getARDishes();
+  const ids = getCartTotals().items.map(x => x.dish.id).filter(id => ar.some(d => d.id === id)).slice(0, SPREAD_MAX);
+  if (!ids.length) { showToast(T().spreadNoCart); return false; }
+  spreadSel = ids;
+  renderSpreadModal();
+  return true;
+}
+
+function toggleSpread(id) {
+  const i = spreadSel.indexOf(id);
+  if (i >= 0) spreadSel.splice(i, 1);
+  else if (spreadSel.length >= SPREAD_MAX) { showToast(T().spreadMax); return; }
+  else spreadSel.push(id);
+  renderSpreadModal();
+}
+
+function renderSpreadModal() {
+  const t = T();
+  const list = $('spread-list');
+  if (!list) return;
+  const dishes = getARDishes().slice().sort((a, b) => catRank(a.category) - catRank(b.category));
+  list.innerHTML = dishes.length ? dishes.map(d => {
+    const sel = spreadSel.includes(d.id);
+    const thumb = d.posterPath
+      ? `<img src="${esc(d.posterPath)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${d.emoji}</span>`
+      : `<span>${d.emoji}</span>`;
+    return `<div class="spread-row${sel ? ' selected' : ''}" data-sp-id="${esc(d.id)}" role="checkbox" aria-checked="${sel}" tabindex="0">
+      <span class="spread-check">${sel ? '✓' : ''}</span>
+      <span class="spread-thumb">${thumb}</span>
+      <span class="spread-meta"><span class="spread-name">${esc(d.name)}</span><span class="spread-cat">${esc(catLabel(d.category))}</span></span>
+      <span class="spread-price">₹${d.price.toLocaleString('en-IN')}</span>
+    </div>`;
+  }).join('') : `<div class="spread-empty">${esc(t.spreadNoDishes)}</div>`;
+
+  const chosen = selectedSpreadDishes();
+  const total = chosen.reduce((s, d) => s + d.price, 0);
+  $('spread-count').textContent = `${spreadSel.length} / ${SPREAD_MAX} ${t.spreadSelected}`;
+  $('spread-total').textContent = `₹${total.toLocaleString('en-IN')}`;
+
+  const go = $('spread-go-btn');
+  const isReady = !spreadBusy && spreadBlobUrl && spreadBuiltKey === spreadKey(chosen.map(d => d.id)) && chosen.length > 0;
+  go.disabled = spreadBusy || !chosen.length;
+  go.classList.toggle('ready', !!isReady);
+  go.innerHTML = spreadBusy
+    ? `<span class="btn-spin"></span>${esc(t.spreadBuilding)}`
+    : `${SVG_CUBE}${esc(isReady ? t.spreadReady : t.spreadGo)}`;
+
+  $('spread-add-btn').textContent = t.spreadAddAll;
+  $('spread-add-btn').disabled = !chosen.length;
+}
+
+$('spread-list').addEventListener('click', e => {
+  const row = e.target.closest('[data-sp-id]');
+  if (row) toggleSpread(row.dataset.spId);
+});
+$('spread-list').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest('[data-sp-id]');
+  if (row) { e.preventDefault(); toggleSpread(row.dataset.spId); }
+});
+$('spread-preset-full').addEventListener('click', () => presetBalanced());
+$('spread-preset-cart').addEventListener('click', () => presetFromCart());
+$('spread-preset-clear').addEventListener('click', () => { spreadSel = []; renderSpreadModal(); });
+$('spread-close').addEventListener('click', closeSpreadModal);
+$('spread-modal').addEventListener('click', e => { if (e.target === $('spread-modal')) closeSpreadModal(); });
+$('spread-add-btn').addEventListener('click', () => {
+  const chosen = selectedSpreadDishes();
+  if (!chosen.length) { showToast(T().spreadNone); return; }
+  chosen.forEach(d => { if (getDishQty(d.id) <= 0) changeCartQty(d.id, 1, true); });
+  showToast(`✓ ${T().spreadAdded}`);
+});
+$('spread-go-btn').addEventListener('click', () => launchSpreadAR());
+$('spread-open-hero').addEventListener('click', () => openSpreadModal());
+$('spread-open-main').addEventListener('click', () => openSpreadModal());
+
+function configureViewerForSpread() {
+  spreadMode = true;
+  globalAR.classList.add('spread-mode');
+  // Scene Viewer can't open blob: URLs, so a spread uses WebXR (Android) / Quick Look (iOS) only.
+  globalAR.setAttribute('ar-modes', isIOS ? 'quick-look webxr' : 'webxr');
+  globalAR.removeAttribute('ios-src');         // let model-viewer generate the USDZ from the combined GLB
+  globalAR.setAttribute('scale', '1 1 1');     // per-dish scale is already baked into the combined model
+  globalAR.setAttribute('ar-placement', 'floor');
+  globalAR.setAttribute('ar-scale', 'fixed');
+  globalAR.setAttribute('shadow-intensity', '1');
+  globalAR.setAttribute('shadow-softness', '0.9');
+  applyARShadow();
+}
+
+function updateSpreadHUD() {
+  const t = T();
+  const chip = $('ar-spread-chip');
+  if (chip) {
+    const total = spreadDishes.reduce((s, d) => s + d.price, 0);
+    chip.textContent = `🍽️ ${t.spreadChip} · ${spreadDishes.length} ${t.spreadDishes} · ₹${total.toLocaleString('en-IN')}`;
+  }
+  refreshAllCartControls();
+}
+
+async function launchSpreadAR() {
+  if (spreadBusy) return;
+  const t = T();
+  const dishes = selectedSpreadDishes();
+  if (!dishes.length) { showToast(t.spreadNone); return; }
+  const key = spreadKey(dishes.map(d => d.id));
+  const t0 = Date.now();
+
+  spreadBusy = true;
+  renderSpreadModal();
+  try {
+    if (!spreadBlobUrl || spreadBuiltKey !== key) {
+      const url = await buildSpreadGLB(dishes);
+      const old = spreadBlobUrl;
+      spreadBlobUrl = url;
+      spreadBuiltKey = key;
+      if (old) setTimeout(() => URL.revokeObjectURL(old), 5000);
+    }
+    spreadDishes = dishes;
+    currentARDish = null;
+    configureViewerForSpread();
+    await ensureARSrc(spreadBlobUrl);
+
+    spreadBusy = false;
+    renderSpreadModal();
+
+    // Browsers need a fresh tap to start AR. If the build took long, ask for one more tap.
+    if (Date.now() - t0 > 3500) { showToast(t.spreadReadyToast); return; }
+    activateSpreadAR();
+  } catch (err) {
+    console.warn('Whole-table AR failed:', err);
+    spreadBusy = false;
+    spreadBuiltKey = '';
+    renderSpreadModal();
+    showToast(t.spreadFail);
+  }
+}
+
+/* Tap on an already-built spread: start AR immediately (keeps the user gesture alive) */
+function activateSpreadAR() {
+  try {
+    if (!spreadMode) configureViewerForSpread();
+    if (globalAR.getAttribute('src') !== spreadBlobUrl) {
+      globalAR.setAttribute('src', spreadBlobUrl);
+      launchSpreadAR();     // viewer was swapped meanwhile → reload it first
+      return;
+    }
+    if (globalAR.canActivateAR === false) {
+      showToast(T().spreadUnsupported);
+      return;
+    }
+    globalAR.activateAR();
+  } catch (err) {
+    console.warn('Whole-table AR activation failed:', err);
+    showToast(T().spreadUnsupported);
+  }
+}
+
+/* If the spread is already built for the current selection, the main button starts AR at once */
+(function wireSpreadGoShortcut() {
+  const btn = $('spread-go-btn');
+  btn.addEventListener('click', e => {
+    const chosen = selectedSpreadDishes();
+    if (spreadBusy || !chosen.length) return;
+    if (spreadBlobUrl && spreadBuiltKey === spreadKey(chosen.map(d => d.id)) && globalAR.getAttribute('src') === spreadBlobUrl && globalAR.loaded) {
+      e.stopImmediatePropagation();
+      spreadDishes = chosen;
+      configureViewerForSpread();
+      activateSpreadAR();
+    }
+  }, true);
+})();
+
+/* ───────────── "VIEW ORDER" → READY, TAP TO PLACE ON TABLE ─────────────
+   The spread for the guest's cart is built in the background every time the cart
+   changes, so by the time they open "View Order" it is already loaded in the AR
+   viewer and one tap starts AR. */
+let cartPrepState = 'idle';   // idle | building | ready | error
+let cartPrepKey = '';
+let cartPrepToken = 0;
+let cartPrepTimer = null;
+
+function cartSpreadDishes() {
+  return getCartTotals().items
+    .map(x => x.dish)
+    .filter(d => d.glbPath && d.available)
+    .sort((a, b) => catRank(a.category) - catRank(b.category))
+    .slice(0, SPREAD_MAX);
+}
+
+function cartSpreadReady(key) {
+  return !!key && spreadBuiltKey === key && !!spreadBlobUrl &&
+    globalAR.getAttribute('src') === spreadBlobUrl && globalAR.loaded === true;
+}
+
+async function prepareCartSpread() {
+  const dishes = cartSpreadDishes();
+  const key = spreadKey(dishes.map(d => d.id));
+  if (!dishes.length) { cartPrepState = 'idle'; cartPrepKey = ''; updateCartPlaceBtn(); return; }
+  if (globalAR.classList.contains('ar-active')) return;           // never touch the viewer during an AR session
+  if (cartSpreadReady(key)) { cartPrepState = 'ready'; cartPrepKey = key; updateCartPlaceBtn(); return; }
+
+  const token = ++cartPrepToken;
+  cartPrepState = 'building';
+  cartPrepKey = key;
+  updateCartPlaceBtn();
+  try {
+    if (spreadBuiltKey !== key || !spreadBlobUrl) {
+      const url = await buildSpreadGLB(dishes);
+      if (token !== cartPrepToken) { URL.revokeObjectURL(url); return; }   // cart changed meanwhile
+      const old = spreadBlobUrl;
+      spreadBlobUrl = url;
+      spreadBuiltKey = key;
+      if (old) setTimeout(() => URL.revokeObjectURL(old), 5000);
+    }
+    spreadDishes = dishes;
+    currentARDish = null;
+    configureViewerForSpread();
+    await ensureARSrc(spreadBlobUrl);
+    if (token !== cartPrepToken) return;
+    cartPrepState = 'ready';
+  } catch (err) {
+    console.warn('Could not prepare table spread:', err);
+    if (token !== cartPrepToken) return;
+    cartPrepState = 'error';
+  }
+  updateCartPlaceBtn();
+}
+
+function scheduleCartPrep() {
+  clearTimeout(cartPrepTimer);
+  cartPrepTimer = setTimeout(() => {
+    if (globalAR.classList.contains('ar-active')) return;
+    if (cartSpreadDishes().length) prepareCartSpread();
+  }, 450);
+}
+
+function updateCartPlaceBtn() {
+  const box = $('cart-place-box');
+  if (!box) return;
+  const t = T();
+  const dishes = cartSpreadDishes();
+  if (!dishes.length) { box.style.display = 'none'; return; }
+  box.style.display = '';
+
+  const key = spreadKey(dishes.map(d => d.id));
+  // Strip showing exactly which dishes will appear on the table
+  $('cart-place-strip').innerHTML =
+    `<span class="cp-stack">${dishes.map(d => {
+      const thumb = d.posterPath
+        ? `<img src="${esc(d.posterPath)}" alt="" onerror="this.style.display='none'">`
+        : `<span>${d.emoji}</span>`;
+      return `<span class="cp-thumb">${thumb}</span>`;
+    }).join('')}</span>
+    <span class="cp-names"><b>${dishes.length} ${dishes.length === 1 ? 'dish' : 'dishes'} on your table</b><span>${esc(dishes.map(d => prettyName(d.name)).join(' · '))}</span></span>`;
+
+  const btn = $('cart-place-btn');
+  const ready = cartPrepKey === key && cartPrepState === 'ready' && cartSpreadReady(key);
+  const building = cartPrepKey === key && cartPrepState === 'building';
+  const failed = cartPrepKey === key && cartPrepState === 'error';
+
+  btn.classList.toggle('ready', ready);
+  btn.disabled = building;
+  if (ready) btn.innerHTML = `${SVG_CUBE}${esc(t.spreadReady)}`;
+  else if (building) btn.innerHTML = `<span class="btn-spin"></span>${esc(t.spreadBuilding)}`;
+  else if (failed) btn.innerHTML = `${SVG_CUBE}${esc(t.retry)}`;
+  else {
+    btn.innerHTML = `<span class="btn-spin"></span>${esc(t.spreadBuilding)}`;
+    btn.disabled = true;
+    setTimeout(prepareCartSpread, 0);   // cart changed, or the viewer was used for another dish → get ready again
+  }
+}
+
+$('cart-place-btn').addEventListener('click', () => {
+  const dishes = cartSpreadDishes();
+  if (!dishes.length) { showToast(T().spreadNoCart); return; }
+  const key = spreadKey(dishes.map(d => d.id));
+  if (cartPrepState === 'ready' && cartPrepKey === key && cartSpreadReady(key)) {
+    // Everything is already loaded → start AR instantly (keeps the tap gesture alive)
+    spreadDishes = dishes;
+    currentARDish = null;
+    configureViewerForSpread();
+    activateSpreadAR();
+    return;
+  }
+  if (cartPrepState !== 'building') { cartPrepKey = ''; prepareCartSpread(); }
+});
+
+function updateSpreadEntryPoints() {
+  const has = getARDishes().length > 0;
+  $('spread-open-hero').style.display = has ? '' : 'none';
+  $('spread-cta-row').style.display = has ? '' : 'none';
+}
+
+/* ───────────── MODAL + AR + ZOOM ───────────── */
+function openModal(id, autoStart3D = true) {   // 3D now starts loading instantly when a dish is opened
+  const d = allDishes.find(x => x.id === id);
+  if (!d) return;
+  currentModalDishId = d.id;
+  const t = T();
+  $('modal-name').textContent = d.name;
+  $('modal-desc').textContent = d.desc;
+  $('modal-desc').style.display = d.desc ? '' : 'none';
+  $('modal-price').innerHTML = `<span class="price-sym">₹</span>${d.price.toLocaleString('en-IN')}`;
+  $('modal-tags').innerHTML = tagHTML(d);
+  $('modal-ar-t').textContent = d.glbPath ? t.arNote : t.ftAR;
+  $('modal-ai-t').textContent = aiLong(d);
+
+  const modCart = $('modal-cart-ctl');
+  if (modCart) {
+    modCart.innerHTML = cartControlHTML(d.id);
+    bindCartActionEvents(modCart);
+  }
+
+  const arBadge = $('mv-ar-badge');
+  arBadge.classList.remove('visible');
+  arBadge.textContent = t.arReady;
+  $('scale-info').textContent = d.glbPath ? t.portion : '';
+
+  const vw = $('modal-viewer-wrap');
+  vw.querySelectorAll('.modal-photo, model-viewer, .mv-ar-btn-wrap, .mv-zoom-col').forEach(el => el.remove());
+
+  const photoWrap = document.createElement('div');
+  photoWrap.className = 'modal-photo';
+  photoWrap.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+  photoWrap.innerHTML = d.posterPath
+    ? `<img src="${esc(d.posterPath)}" alt="${esc(d.name)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:90px;">${d.emoji}</span>`
+    : `<span style="font-size:90px;">${d.emoji}</span>`;
+  vw.insertBefore(photoWrap, arBadge);
+
+  if (d.glbPath) {
+    const arBtnWrap = document.createElement('div');
+    arBtnWrap.className = 'mv-ar-btn-wrap';
+    arBtnWrap.style.cssText = 'position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:6;display:flex;gap:10px;align-items:center;';
+    arBtnWrap.innerHTML = `<button class="modal-ar-launch-btn" type="button">${SVG_CUBE}${esc(t.viewTable)}</button>`;
+    vw.insertBefore(arBtnWrap, arBadge);
+    const modalBtn = arBtnWrap.querySelector('.modal-ar-launch-btn');
+    modalBtn.addEventListener('click', () => launchDirectAR(d.id, modalBtn));
+    if (autoStart3D) loadModelInModal(d, vw, arBadge, arBtnWrap, photoWrap);
+  }
+
+  $('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function addModalZoom(mv, vw, arBadge) {
+  const t = T();
+  const col = document.createElement('div');
+  col.className = 'mv-zoom-col';
+  col.innerHTML = `<button class="zbtn" type="button" data-z="in" aria-label="${esc(t.zoomIn)}">+</button><button class="zbtn" type="button" data-z="out" aria-label="${esc(t.zoomOut)}">−</button>`;
+  vw.insertBefore(col, arBadge);
+  const zoomBy = f => {
+    const o = mv.getCameraOrbit();
+    mv.cameraOrbit = `${o.theta}rad ${o.phi}rad ${o.radius * f}m`;
+  };
+  col.querySelector('[data-z="in"]').addEventListener('click', () => zoomBy(0.75));
+  col.querySelector('[data-z="out"]').addEventListener('click', () => zoomBy(1.33));
+}
+
+function loadModelInModal(d, vw, arBadge, arBtnWrap, photoWrap) {
+  const t = T();
+  const btn = arBtnWrap.querySelector('.modal-ar-launch-btn');
+
+  const mv = document.createElement('model-viewer');
+  mv.setAttribute('src', d.glbPath);
+  if (isIOS && d.usdzPath) mv.setAttribute('ios-src', d.usdzPath);
+
+  const s = (d.scale ?? 0.25).toFixed(4);
+  mv.setAttribute('scale', `${s} ${s} ${s}`);
+  mv.setAttribute('ar', '');
+  mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+  mv.setAttribute('ar-placement', 'floor');
+  mv.setAttribute('ar-scale', 'fixed');
+  mv.setAttribute('camera-controls', '');
+  mv.setAttribute('touch-action', 'pan-y');
+  mv.setAttribute('shadow-intensity', '1');
+  mv.setAttribute('shadow-softness', '0.9');
+  mv.setAttribute('environment-image', 'neutral');
+  mv.setAttribute('exposure', '1');
+  mv.setAttribute('camera-orbit', '0deg 75deg 105%');
+  mv.setAttribute('min-camera-orbit', 'auto auto 30%');
+  mv.setAttribute('max-camera-orbit', 'auto auto 200%');
+  mv.setAttribute('interaction-prompt', 'none');
+  mv.setAttribute('loading', 'eager');
+  mv.setAttribute('reveal', 'auto');
+  mv.innerHTML = `<button slot="ar-button" style="display:none;"></button><button slot="exit-webxr-ar-button" style="display:none;"></button>`;
+  mv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;background:transparent;touch-action:pan-y pinch-zoom;z-index:-1;opacity:0;pointer-events:none;';
+  vw.insertBefore(mv, arBadge);
+
+  mv.addEventListener('load', () => {
+    photoWrap.style.display = 'none';
+    mv.style.zIndex = '2'; mv.style.opacity = '1'; mv.style.pointerEvents = 'auto';
+    arBadge.classList.add('visible');
+    arBtnWrap.style.display = 'flex';
+    btn.disabled = false;
+    btn.innerHTML = `${SVG_CUBE}${esc(t.viewTable)}`;
+    addModalZoom(mv, vw, arBadge);
+  });
+}
+
+function closeModal() {
+  currentModalDishId = null;
+  const mvEl = document.querySelector('#modal-viewer-wrap model-viewer');
+  if (mvEl && typeof mvEl.pause === 'function') mvEl.pause();
+  $('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  document.querySelectorAll('#modal-viewer-wrap .modal-photo, #modal-viewer-wrap model-viewer, #modal-viewer-wrap .mv-ar-btn-wrap, #modal-viewer-wrap .mv-zoom-col').forEach(el => el.remove());
+  $('mv-ar-badge').classList.remove('visible');
+}
+
+document.addEventListener('visibilitychange', () => {
+  const mvEl = document.querySelector('#modal-viewer-wrap model-viewer');
+  if (!mvEl) return;
+  document.hidden ? (typeof mvEl.pause === 'function' && mvEl.pause()) : (typeof mvEl.play === 'function' && mvEl.play());
+});
+$('modal-close').addEventListener('click', closeModal);
+$('modal-overlay').addEventListener('click', e => { if (e.target === $('modal-overlay')) closeModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModal();
+    closeCartModal();
+    closeSpreadModal();
+  }
+});
+
+/* ───────────── MENU FILTERS PLACEMENT ───────────── */
+const controlsEl = document.querySelector('.controls');
+const stageEl = document.querySelector('.stage');
+function placeControls(inStage) {
+  if (inStage && controlsEl.parentElement !== stageEl) stageEl.prepend(controlsEl);
+  if (!inStage && controlsEl.parentElement === stageEl) $('showcase').after(controlsEl);
+}
+
+/* ───────────── ZOOM-THROUGH SHOWCASE ───────────── */
+const CAT_ORDER = ['starter', 'main-course', 'dessert'];
+const catRank = c => { const i = CAT_ORDER.indexOf(c); return i < 0 ? 99 : i; };
+let syncLock = 0;
+let showList = [], showIdx = -1, showMVs = [];
+
+function renderShowcase() {
+  showList = allDishes.filter(d => d.glbPath && d.available).sort((a, b) => catRank(a.category) - catRank(b.category));
+  const sec = $('showcase');
+  if (!showList.length) { sec.style.display = 'none'; placeControls(false); return; }
+  sec.style.display = '';
+  placeControls(true);
+  sec.style.setProperty('--sh', `${showList.length * 80 + 100}vh`);
+  const stack = $('show-stack');
+  stack.innerHTML = '';
+  showMVs = showList.map(d => {
+    const mv = document.createElement('model-viewer');
+    const s = (d.scale ?? 0.25).toFixed(4);
+    Object.entries({
+      src: d.glbPath, poster: d.posterPath || '', alt: d.name,
+      scale: `${s} ${s} ${s}`,
+      ar: '', 'ar-modes': 'webxr scene-viewer quick-look', 'ar-placement': 'floor', 'ar-scale': 'fixed',
+      'camera-orbit': '-40deg 72deg 130%', 'field-of-view': '30deg',
+      'min-camera-orbit': 'auto auto 25%', 'max-camera-orbit': 'auto auto 320%', 'shadow-intensity': '1', 'shadow-softness': '0.9',
+      exposure: '1.1', 'environment-image': 'neutral', 'interaction-prompt': 'none', 'disable-zoom': '', 'disable-pan': '',
+      loading: 'eager', reveal: 'auto', 'interpolation-decay': '50'
+    }).forEach(([k, v]) => mv.setAttribute(k, v));
+    mv.innerHTML = `<button slot="ar-button" style="display:none;"></button><button slot="exit-webxr-ar-button" style="display:none;"></button>`;
+    if (isIOS && d.usdzPath) mv.setAttribute('ios-src', d.usdzPath);
+    stack.appendChild(mv);
+    return mv;
+  });
+  $('sc-dots').innerHTML = showList.map((d, i) => `<button type="button" class="dot" data-i="${i}" aria-label="${esc(d.name)}"></button>`).join('');
+  $('sc-dots').querySelectorAll('.dot').forEach(b => b.addEventListener('click', () => scrollToShow(+b.dataset.i)));
+  showIdx = -1;
+  update();
+}
+
+function scrollToShow(i) {
+  const sec = $('showcase'), n = showList.length;
+  const top = sec.getBoundingClientRect().top + window.scrollY;
+  const span = sec.offsetHeight - window.innerHeight;
+  window.scrollTo({ top: top + span * (i + 0.3) / (n - 0.4), behavior: reduceMotion ? 'auto' : 'smooth' });
+}
+
+function jumpToCategory(cat) {
+  if (!showList.length) return;
+  const i = cat === 'all' ? 0 : showList.findIndex(d => d.category === cat);
+  if (i < 0) return;
+  syncLock = Date.now() + 1300;
+  scrollToShow(i);
+}
+
+/* Showcase scrolling no longer changes the Full Menu list below */
+function setShowDish(idx) {
+  showIdx = idx;
+  const d = showList[idx], n = showList.length, t = T();
+  $('sc-count').textContent = `${String(idx + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}`;
+  $('sc-cat').textContent = catLabel(d.category);
+  $('sc-name').textContent = d.name;
+  $('sc-desc').textContent = d.desc;
+  $('sc-desc').style.display = d.desc ? '' : 'none';
+  $('sc-price').innerHTML = `<span class="price-sym">₹</span>${d.price.toLocaleString('en-IN')}`;
+  $('sc-ar-t').textContent = t.arNote;
+  $('sc-ai-t').textContent = aiLong(d);
+  const scCartWrap = $('sc-cart-ctl');
+  if (scCartWrap) {
+    scCartWrap.innerHTML = cartControlHTML(d.id);
+    bindCartActionEvents(scCartWrap);
+  }
+  $('sc-dots').querySelectorAll('.dot').forEach((b, i) => b.classList.toggle('active', i === idx));
+  const sw = $('sc-swap'); sw.classList.remove('pop'); void sw.offsetWidth; sw.classList.add('pop');
+}
+
+function updateShowcase() {
+  if (!showList.length || showMVs.length !== showList.length) return;
+  const sec = $('showcase');
+  const r = sec.getBoundingClientRect(), vh = window.innerHeight;
+  if (r.top > vh * 1.5 || r.bottom < -vh * 0.5) return;
+  const n = showList.length;
+  const span = Math.max(1, r.height - vh);
+  const p = clamp(-r.top / span, 0, 1);
+  sec.style.setProperty('--rot', (p * 540).toFixed(1) + 'deg');
+  const f = p * (n - 0.4);
+  const idx = clamp(Math.floor(f + 0.2), 0, n - 1);
+  if (idx !== showIdx) setShowDish(idx);
+
+  showMVs.forEach((mv, i) => {
+    let u = f - i;
+    if (i === 0 && u < 0) u = 0;
+    if (i === n - 1 && u > 0.6) u = 0.6;
+    let rad = 130, op = 0;
+    if (u >= -0.4 && u < 1) {
+      if (u < 0)        { const t = (u + 0.4) / 0.4; rad = lerp(320, 130, 1 - Math.pow(1 - t, 3)); op = t; }
+      else if (u < 0.6) { rad = lerp(130, 75, u / 0.6); op = 1; }
+      else              { const t = (u - 0.6) / 0.4; rad = lerp(75, 26, t * t); op = 1 - ease(t); }
+    }
+    mv.style.opacity = op.toFixed(3);
+    mv.style.visibility = op > 0.01 ? 'visible' : 'hidden';
+    mv.style.zIndex = u >= 0 ? 2 : 1;
+    if (op > 0.01) mv.cameraOrbit = `${(-40 + clamp(u, -0.4, 1) * 200).toFixed(1)}deg 72deg ${rad.toFixed(1)}%`;
+  });
+}
+
+$('sc-ar').addEventListener('click', e => {
+  const d = showList[showIdx];
+  if (d) launchDirectAR(d.id, e.currentTarget);
+});
+
+/* ───────────── SCROLL ENGINE ───────────── */
+const heroEl = $('hero'), progressEl = $('progress');
+let ticking = false, heroH = 600, scrollFrac = 0, mouseX = 0, mouseY = 0;
+
+function updateCards(vh) {
+  document.querySelectorAll('.menu-card').forEach(c => {
+    const cell = c.parentElement;
+    const r = cell.getBoundingClientRect();
+    if (r.bottom < -vh * 0.3 || r.top > vh * 1.3) { c.style.setProperty('--so', '0'); return; }
+    const d = clamp(((r.top + r.height / 2) - vh * 0.52) / (vh * 0.5), -1.4, 1.4);
+    const ad = Math.abs(d);
+    c.style.setProperty('--srx', (d > 0 ? d * 16 : d * 8).toFixed(2) + 'deg');
+    c.style.setProperty('--sty', (d > 0 ? d * 48 : 0).toFixed(1) + 'px');
+    c.style.setProperty('--sc',  (1 - ad * 0.07).toFixed(3));
+    c.style.setProperty('--so',  clamp(1 - Math.max(0, ad - 0.7) * 2.2, 0, 1).toFixed(3));
+  });
+}
+
+function update() {
+  ticking = false;
+  const y = window.scrollY, vh = window.innerHeight;
+  const max = Math.max(1, document.documentElement.scrollHeight - vh);
+  scrollFrac = clamp(y / max, 0, 1);
+  progressEl.style.transform = `scaleX(${scrollFrac.toFixed(4)})`;
+  if (!reduceMotion) {
+    heroEl.style.setProperty('--hp', clamp(y / (heroH * 0.85), 0, 1).toFixed(4));
+    updateCards(vh);
+  }
+  updateShowcase();
+}
+function requestUpdate() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+function measure() { heroH = heroEl.offsetHeight || 600; requestUpdate(); }
+
+window.addEventListener('scroll', requestUpdate, { passive: true });
+window.addEventListener('resize', measure);
+window.addEventListener('load', measure);
+window.addEventListener('pointermove', e => {
+  mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+  mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+  if (!reduceMotion) { heroEl.style.setProperty('--mx', mouseX.toFixed(3)); heroEl.style.setProperty('--my', mouseY.toFixed(3)); }
+}, { passive: true });
+
+/* ───────────── UI TEXT / LANGUAGE / INIT ───────────── */
+$('search').addEventListener('input', e => { query = e.target.value; renderItems(); });
+$('veg-toggle').addEventListener('click', e => {
+  vegOnly = !vegOnly;
+  e.currentTarget.setAttribute('aria-pressed', String(vegOnly));
+  renderItems();
+});
+
+function applyUIText() {
+  const t = T();
+  $('ui-sub-tag').textContent       = t.concept;
+  $('ui-eyebrow').textContent       = t.eyebrow;
+  $('ui-ar-badge').textContent      = t.badge;
+  $('ui-loading').textContent       = t.loading;
+  $('ui-veg-only').textContent      = t.vegOnly;
+  $('ui-footer').textContent        = t.footer;
+  $('ui-footer-2').textContent      = t.footer2;
+  $('ui-footer-3').textContent      = t.footer3;
+  $('ui-step-1').textContent        = t.s1;
+  $('ui-step-2').textContent        = t.s2;
+  $('ui-step-3').textContent        = t.s3;
+  $('ui-hp1').textContent           = t.hp1;
+  $('ui-hp2').textContent           = t.hp2;
+  $('ui-hp3').textContent           = t.hp3;
+  $('ui-scroll').textContent        = t.scroll;
+  $('ui-full-menu').textContent     = t.fullMenu;
+  $('ui-view-cart').textContent     = t.viewCart;
+  $('ui-order-summary').textContent = t.orderSummary;
+  $('ui-send-wa').textContent       = t.sendWA;
+  $('ui-spread-hero').textContent   = t.spreadHero;
+  $('ui-spread-main').textContent   = t.spreadMain;
+  $('ui-spread-title').textContent  = t.spreadTitle;
+  $('ui-spread-sub').textContent    = t.spreadSub;
+  $('ui-spread-note').textContent   = t.spreadNote;
+  $('spread-preset-full').textContent  = t.spreadFull;
+  $('spread-preset-cart').textContent  = t.spreadMine;
+  $('spread-preset-clear').textContent = t.spreadClear;
+  const arLabel = $('ar-carousel-label');
+  if (arLabel) arLabel.textContent = t.arSwipe;
+  $('sc-ar').innerHTML              = SVG_CUBE + esc(t.viewTable);
+  $('search').placeholder           = t.search;
+  document.documentElement.lang = currentLang;
+  updateTablePill();
+  if ($('spread-modal').classList.contains('open')) renderSpreadModal();
+}
+
+$('lang-select').addEventListener('change', e => {
+  currentLang = e.target.value;
+  applyUIText();
+  allDishes = rawRows.map(rowToDish).filter(d => d.name);
+  renderTabs(); renderItems(); renderShowcase(); renderARCarousel();
+  updateSpreadEntryPoints();
+  if (spreadMode) updateSpreadHUD();
+  refreshAllCartControls();
+});
+
+async function init() {
+  initTableAndCart();
+  const loadingEl = $('loading-state');
+  const container = $('items-container');
+  applyUIText();
+  try {
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    rawRows   = parseCSV(await res.text());
+    allDishes = rawRows.map(rowToDish).filter(d => d.name);
+    if (!allDishes.length) throw new Error('No dishes found.');
+    loadingEl.style.display = 'none';
+    container.style.display = 'block';
+    renderTabs(); renderItems(); renderShowcase(); renderARCarousel();
+    updateSpreadEntryPoints();
+    refreshAllCartControls();
+    preloadModels();
+  } catch (err) {
+    console.error('Menu load error:', err);
+    placeControls(false);
+    loadingEl.innerHTML = `
+      <p class="error-title">Could not load menu</p>
+      <p class="error-body">Make sure your sheet is published:<br><strong>File → Share → Publish to web → CSV</strong></p>`;
+  }
+}
+
+renderTabs();
+measure();
+init();
+</script>
+</body>
+</html>
